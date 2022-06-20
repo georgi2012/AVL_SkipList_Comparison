@@ -1,19 +1,120 @@
 #include "AVLTree.h"
 
-void AVLTree::leftRotate(Node*& node) noexcept
+bool AVLTree::exists(int key) const noexcept {
+	return findNode(key, root) != nullptr;
+}
+
+Node* AVLTree::leftRotate(Node* node) noexcept
 {
-	
+	if (!node->right || !node->right->left) return node;
+	Node* rightNode = node->right;
+	Node* farLeft = rightNode->left;
+	rightNode->left = node;
+	node->right = farLeft;
+	return rightNode;
+}
+
+Node* AVLTree::balanceTree(const int val, Node* node) noexcept
+{
+	int balance = height(node->left) - height(node->right);
+	if (balance > 1 && val < node->left->value) {
+		return rightRotate(node);// Left Left Case
+	}
+	if (balance < -1 && val > node->right->value) {
+		return leftRotate(node);// Right Right Case
+	}
+	if (balance > 1 && val > node->left->value) {
+		node->left = leftRotate(node->left);// Left Right Case
+		return rightRotate(node);
+	}
+	if (balance < -1 && val < node->right->value) {
+		node->right = rightRotate(node->right);// Right Left Case
+		return leftRotate(node);
+	}
+	return node;
+}
+
+Node* AVLTree::rightRotate(Node* node) noexcept
+{
+	if (!node->left || !node->left->right) return node;
+	Node* leftNode = node->left;
+	Node* farRight = leftNode->right;
+	leftNode->right = node;
+	node->left = farRight;
+	return leftNode;
+}
+
+Node* AVLTree::insertNode(const int val, Node* node)
+{
+	if (node == nullptr) {
+		return new Node(val);
+	}
+	if (val < node->value) {
+		node->left = insertNode(val, node->left);
+	}
+	else if (val > node->value) {
+		node->right = insertNode(val, node->right);
+	}
+	else {//equal not permitted
+		throw std::logic_error("Node already exists");
+	}
+	return balanceTree(val, node); //!balancing part!
+}
+
+Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
+	if (!node)
+		return node;
+	if (val < node->value) {
+		node->left = deleteNode(val, node->left);
+	}
+	else if (val > node->value) {
+		node->right = deleteNode(val, node->right);
+	}
+	else
+	{
+		//one child cases
+		if (!node->left || !node->right)
+		{
+			Node* temp = node->left ? node->left : node->right;
+			if (!temp)
+			{
+				temp = node;
+				node = nullptr;
+			}
+			else
+			{
+				*node = *temp;
+			}
+			if (temp == root) {
+				delete root;
+				root = nullptr;
+			}
+			else {
+				delete temp;
+			}
+			--size;
+		}
+		else
+		{
+			Node* temp = getMin(node->right);
+			node->value = temp->value;
+			node->right = deleteNode(temp->value, node->right);
+		}
+	}
+	if (!node)
+		return node;
+	return balanceTree(val, node);
 
 }
 
-void AVLTree::rightRotate(Node*& node) noexcept
-{
-	
-}
+Node* AVLTree::getMin(Node* node) const noexcept {
+	if (node->left) {
+		return getMin(node->left);
+	}
+	Node* lastRoot = node;
+	node = node->right;
+	return lastRoot;
 
-void AVLTree::correctInsertion(Node*& node) noexcept
-{
-	
 }
 
 void AVLTree::deleteAll(Node* node) noexcept
@@ -28,11 +129,19 @@ void AVLTree::deleteAll(Node* node) noexcept
 	delete node;
 }
 
-bool AVLTree::removeNode(Node* node) noexcept
+int AVLTree::height(const Node* node) const noexcept
 {
-	
+	if (!node) return 0;
+	int leftH = height(node->left);
+	int rightH = height(node->right);
+	return 1 + (leftH > rightH ? leftH : rightH);
 }
 
+Node* AVLTree::findNode(const int val, Node* node) const noexcept {
+	if (!node) return nullptr;
+	if (node->value == val) return node;
+	return val < node->value ? findNode(val, node->left) : findNode(val, node->right);
+}
 
 Node* AVLTree::makeCopy(const Node* current)
 {
@@ -108,90 +217,22 @@ size_t AVLTree::getSize() const noexcept
 	return size;
 }
 
+bool AVLTree::remove(int key) noexcept {
+	auto oldSize = size;
+	deleteNode(key, root);
+	return oldSize > size;
+}
+
 bool AVLTree::insert(int key) noexcept
 {
-	Node* newNode = nullptr;
 	try {
-		newNode = new Node(key);
+		root = insertNode(key, root);
+		++size;
 	}
 	catch (...) {
-		return false;//couldnt insert 
+		return false;
 	}
-	if (!root) {
-		root = newNode;
-	}
-	else {
-		//find the right parent
-		findPlace(newNode);
-		// fix RB rules
-		correctInsertion(newNode);
-	}
-	++size;
 	return true;
 }
 
-inline void AVLTree::findPlace(Node* newNode) noexcept
-{
-	Node* node = root;
-	Node* parent = nullptr;
-	while (node)
-	{
-		parent = node;
-		if (newNode->value < node->value) {
-			node = node->left;
-		}
-		else {
-			node = node->right;
-		}
-	}
-	//newNode->parent = parent;
-	if (newNode->value < parent->value) { //place in the correct side
-		parent->left = newNode;
-	}
-	else {
-		parent->right = newNode;
-	}
-}
 
-bool AVLTree::remove(int key) noexcept
-{
-	//we should find it
-	Node* helper = root;
-	//
-	while (helper) {
-		if (helper->value == key) {
-			break;
-		}
-		if (key < helper->value) {
-			if (!helper->left) break;
-			helper = helper->left;
-		}
-		else {
-			if (!helper->right) break;
-			helper = helper->right;
-		}
-	}
-	if (helper && helper->value == key && removeNode(helper)) {
-		--size;
-		return true;
-	}
-	return false;//couldnt find
-
-}
-
-bool AVLTree::exists(int key) const noexcept
-{
-	Node* node = root;
-	while (node) {
-		if (node->value == key) {
-			return true;
-		}
-		if (node->value > key) {
-			node = node->left;
-		}
-		else {
-			node = node->right;
-		}
-	}
-	return false;
-}

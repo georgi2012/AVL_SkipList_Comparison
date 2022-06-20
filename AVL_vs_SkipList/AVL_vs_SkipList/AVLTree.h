@@ -26,15 +26,16 @@ private:
 	size_t size = 0;
 
 	//private methods
-	void leftRotate(Node*& node) noexcept;
-	void rightRotate(Node*& node) noexcept;
-	void correctInsertion(Node*& node) noexcept;
-	void deleteAll(Node* node) noexcept;
-	bool removeNode(Node* node) noexcept;
-	//void correctRemoving(Node* node) noexcept;
-	inline Node* getSibling(Node* node) const noexcept;
 	Node* makeCopy(const Node* current);
-	inline void findPlace(Node* newNode) noexcept;
+	void deleteAll(Node* node) noexcept;
+	Node* getMin(Node* node) const noexcept;
+	int height(const Node* node) const noexcept;
+	Node* findNode(const int val, Node* node) const noexcept;
+	Node* insertNode(const int val, Node* node);
+	Node* deleteNode(const int val, Node* node) noexcept;
+	Node* balanceTree(const int val, Node* node) noexcept;
+	Node* rightRotate(Node* node) noexcept;
+	Node* leftRotate(Node* node) noexcept;
 public:
 	//constructors and operators
 	AVLTree() = default;
@@ -48,6 +49,8 @@ public:
 	bool insert(int key) noexcept;
 	bool remove(int key) noexcept;
 	bool exists(int key) const noexcept;
+	size_t getHeight() const noexcept;
+	void clearData() noexcept;
 };
 
 class RBIterator {

@@ -1,15 +1,9 @@
 #pragma once
 #include <iostream>
-#include <cstdint>
-/*
-RB rules:
-1.Every node is either red or black.
-2.All nullptr (leaves) are considered black.
-3.A red node does not have a red child.
-4.Every path from a given node to any of its descendant leaves goes through the same number of black nodes.
-(5.The root is black.)
-*/
-//make template?
+#include <stack>
+
+//template?
+class AVLIterator;
 
 struct Node {
 	Node* left, * right;
@@ -37,6 +31,7 @@ private:
 	Node* rightRotate(Node* node) noexcept;
 	Node* leftRotate(Node* node) noexcept;
 public:
+	friend class AVLIterator;
 	//constructors and operators
 	AVLTree() = default;
 	AVLTree(const AVLTree& other);
@@ -51,14 +46,24 @@ public:
 	bool exists(int key) const noexcept;
 	size_t getHeight() const noexcept;
 	void clearData() noexcept;
+	//iteration
+	AVLIterator begin() const noexcept;
+	AVLIterator end() const noexcept;
 };
 
-class RBIterator {
+//left-parent-right
+class AVLIterator {
 private:
-
-
+	//data
+	std::stack<Node*> nodes;
+	//methods
+	AVLIterator(Node* firstNode) noexcept;
 public:
 	friend class AVLTree;
-
+	//methods
+	AVLIterator  operator++();
+	const Node* operator*() const;
+	bool operator==(const AVLIterator& other) const noexcept;
+	bool operator!=(const AVLIterator& other) const noexcept;
 
 };

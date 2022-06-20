@@ -5,7 +5,7 @@
 //
 #include "catch.hpp"
 #include "../AVL_vs_SkipList/AVLTree.h"
-//#include "DelLatercpp.cpp"
+
 
 SCENARIO("Testing AVLTree class insertion") {
 	srand(time(NULL));
@@ -192,5 +192,22 @@ SCENARIO("Test AVLTree class operators and constructors")
 		}//when
 	}//given
 
+}//scen
+SCENARIO("Testing AVLTree class iteration left-parent-right") {
+	GIVEN("Create default tree") {
+		AVLTree tree;
+		WHEN("Insert elements") {
+			for (int i = 0; i < 1000; i++) {
+				tree.insert(i);
+			}
+			REQUIRE(tree.getSize() == 1000);
+			int cnt = 0;
+			THEN("Check if iteration is correct with begin and end") {
+				for (auto node : tree) {
+					REQUIRE(node->value == cnt++);
+				}
+			}
+		}
+	}//given
 }//scen
 

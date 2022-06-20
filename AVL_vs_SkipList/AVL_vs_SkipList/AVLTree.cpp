@@ -4,6 +4,22 @@ bool AVLTree::exists(int key) const noexcept {
 	return findNode(key, root) != nullptr;
 }
 
+void AVLTree::clearData() noexcept
+{
+	deleteAll(root);
+	size = 0;
+}
+
+AVLIterator AVLTree::begin() const noexcept
+{
+	return AVLIterator(root);
+}
+
+AVLIterator AVLTree::end() const noexcept
+{
+	return AVLIterator(nullptr);
+}
+
 Node* AVLTree::leftRotate(Node* node) noexcept
 {
 	if (!node->right || !node->right->left) return node;
@@ -161,6 +177,7 @@ Node* AVLTree::makeCopy(const Node* current)
 	catch (...) {
 		delete node;
 		deleteAll(node->left);
+		size = 0;
 		throw;
 	}
 	return node;
@@ -186,6 +203,7 @@ AVLTree& AVLTree::operator=(const AVLTree& other)
 	if (&other != this) {
 		Node* newRoot = makeCopy(other.root);
 		deleteAll(root);
+		size = other.getSize();
 		root = newRoot;
 	}
 	return *this;
@@ -217,7 +235,8 @@ size_t AVLTree::getSize() const noexcept
 	return size;
 }
 
-bool AVLTree::remove(int key) noexcept {
+bool AVLTree::remove(int key) noexcept
+{
 	auto oldSize = size;
 	deleteNode(key, root);
 	return oldSize > size;
@@ -235,4 +254,34 @@ bool AVLTree::insert(int key) noexcept
 	return true;
 }
 
+AVLIterator AVLIterator::operator++()
+{
+	if (nodes.empty()) {
+		return AVLIterator(nullptr);
+	}
+	Node* node = nodes.top();
+	nodes.pop();
+	if (node->right) nodes.push(node->right);
+	if (node->left) nodes.push(node->left);
+	return *this;
+}
 
+AVLIterator::AVLIterator(Node* firstNode) noexcept
+{
+	if (firstNode) nodes.push(firstNode);
+}
+
+const Node* AVLIterator::operator*() const
+{
+	if (nodes.empty()) return nullptr;
+	return nodes.top();
+}
+
+
+bool AVLIterator::operator==(const AVLIterator& other) const noexcept {
+	return operator*() == *other;
+}
+
+bool AVLIterator::operator!=(const AVLIterator& other) const noexcept {
+	return operator*() != *other;
+}

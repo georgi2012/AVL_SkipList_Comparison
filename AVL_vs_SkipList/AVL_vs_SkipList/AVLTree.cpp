@@ -22,7 +22,7 @@ AVLIterator AVLTree::end() const noexcept
 
 Node* AVLTree::leftRotate(Node* node) noexcept
 {
-	if (!node->right || !node->right->left) return node;
+	if (!node->right) return node;
 	Node* rightNode = node->right;
 	Node* farLeft = rightNode->left;
 	rightNode->left = node;
@@ -30,7 +30,7 @@ Node* AVLTree::leftRotate(Node* node) noexcept
 	return rightNode;
 }
 
-Node* AVLTree::balanceTree(const int val, Node* node) noexcept
+Node* AVLTree::balanceTreeInsertion(const int val, Node* node) noexcept
 {
 	int balance = height(node->left) - height(node->right);
 	if (balance > 1 && val < node->left->value) {
@@ -50,9 +50,33 @@ Node* AVLTree::balanceTree(const int val, Node* node) noexcept
 	return node;
 }
 
+
+Node* AVLTree::balanceTreeDeletion(const int val, Node* node) noexcept
+{
+	int bLeft = height(node->left);
+	int bRight = height(node->right);
+	int balance = bLeft - bRight;
+	if (balance > 1 && val && bLeft >= 0) {
+		return rightRotate(node);// Left Left Case
+	}
+	if (balance < -1 && val && bRight <= 0) {
+		return leftRotate(node);// Right Right Case
+	}
+	if (balance > 1 && val && bLeft < 0) {
+		node->left = leftRotate(node->left);// Left Right Case
+		return rightRotate(node);
+	}
+	if (balance < -1 && val && bLeft > 0) {
+		node->right = rightRotate(node->right);// Right Left Case
+		return leftRotate(node);
+	}
+	return node;
+}
+
+
 Node* AVLTree::rightRotate(Node* node) noexcept
 {
-	if (!node->left || !node->left->right) return node;
+	if (!node->left) return node;
 	Node* leftNode = node->left;
 	Node* farRight = leftNode->right;
 	leftNode->right = node;
@@ -74,7 +98,7 @@ Node* AVLTree::insertNode(const int val, Node* node)
 	else {//equal not permitted
 		throw std::logic_error("Node already exists");
 	}
-	return balanceTree(val, node); //!balancing part!
+	return balanceTreeInsertion(val, node); //!balancing part!
 }
 
 Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
@@ -119,7 +143,7 @@ Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
 	}
 	if (!node)
 		return node;
-	return balanceTree(val, node);
+	return balanceTreeDeletion(val, node);
 
 }
 
@@ -254,6 +278,10 @@ bool AVLTree::insert(int key) noexcept
 	return true;
 }
 
+size_t AVLTree::getHeight() const noexcept {
+	return height(root);
+}
+
 AVLIterator AVLIterator::operator++()
 {
 	if (nodes.empty()) {
@@ -268,7 +296,9 @@ AVLIterator AVLIterator::operator++()
 
 AVLIterator::AVLIterator(Node* firstNode) noexcept
 {
-	if (firstNode) nodes.push(firstNode);
+	if (!firstNode) return;
+	nodes.push(firstNode);
+
 }
 
 const Node* AVLIterator::operator*() const

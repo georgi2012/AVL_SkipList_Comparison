@@ -2,6 +2,7 @@
 #include <stdlib.h>     /* srand, rand */
 #include <time.h> 
 #include <unordered_set>
+#include <cmath>
 //
 #include "catch.hpp"
 #include "../AVL_vs_SkipList/AVLTree.h"
@@ -32,8 +33,9 @@ SCENARIO("Testing AVLTree class insertion") {
 		}
 		WHEN("Insert 1000 random elements") {
 			std::unordered_set<int> set;
-			int values[1000];
-			for (int i = 0; i < 1000; i++) {
+			const int TEST_NUM = 1000;
+			int values[TEST_NUM];
+			for (int i = 0; i < TEST_NUM; i++) {
 				bool isSet = true;
 				do {
 					values[i] = rand() % 100000;
@@ -43,14 +45,18 @@ SCENARIO("Testing AVLTree class insertion") {
 				set.insert(values[i]);
 				REQUIRE(tree.insert(values[i]));
 			}
+			//std::cout << "height:" << tree.getHeight();
 
 			THEN("Test finding the elements") {
-				for (int i = 0; i < 1000; i++)
+				for (int i = 0; i < TEST_NUM; i++)
 					REQUIRE(tree.exists(values[i]));
 			}
 			THEN("Test for getSize") {
-				REQUIRE(tree.getSize() == 1000);
+				REQUIRE(tree.getSize() == TEST_NUM);
 			}//then
+			THEN("Test for correct height") {
+				REQUIRE(tree.getHeight() <= 1.5*log2(TEST_NUM));
+			}
 		}//when
 	}//given
 }//scen
@@ -87,9 +93,10 @@ SCENARIO("Testing AVLTree class deletion") {
 			REQUIRE(tree.exists(3));
 		}
 		WHEN("Insert 1000 random elements") {
-			int values[1000];
+			const int TEST_NUM = 1000;
+			int values[TEST_NUM];
 			std::unordered_set<int> set;
-			for (int i = 0; i < 1000; i++) {
+			for (int i = 0; i < TEST_NUM; i++) {
 				do {
 					values[i] = rand() % 100000;
 					if (i % 2) values[i] *= -1;
@@ -98,19 +105,20 @@ SCENARIO("Testing AVLTree class deletion") {
 				tree.insert(values[i]);
 			}
 			THEN("Test removing half of them") {
-				REQUIRE(tree.getSize() == 1000);
-				for (int i = 0; i < 500; i++) {
+				REQUIRE(tree.getSize() == TEST_NUM);
+				for (int i = 0; i < TEST_NUM/2; i++) {
 					tree.remove(values[i]);
 				}
-				for (int i = 0; i < 500; i++) {
+				for (int i = 0; i < TEST_NUM/2; i++) {
 					REQUIRE(!tree.exists(values[i]));
 
 				}
-				for (int i = 500; i < 1000; i++) {
+				for (int i = TEST_NUM/2; i < TEST_NUM; i++) {
+					//std::cout << i << " ";;
 					REQUIRE(tree.exists(values[i]));
 
 				}
-				REQUIRE(tree.getSize() == 500);
+				REQUIRE(tree.getSize() == TEST_NUM/2);
 			}
 
 		}//when
@@ -123,8 +131,9 @@ SCENARIO("Test AVLTree class operators and constructors")
 		AVLTree tree;
 		WHEN("Fill the default tree with 1000 random values") {
 			std::unordered_set<int> set;
-			int values[1000];
-			for (int i = 0; i < 1000; i++) {
+			const int TEST_NUM = 1000;
+			int values[TEST_NUM];
+			for (int i = 0; i < TEST_NUM; i++) {
 				do {
 					values[i] = rand() % 100000;
 					if (i % 2) values[i] *= -1;
@@ -135,7 +144,7 @@ SCENARIO("Test AVLTree class operators and constructors")
 			THEN("Make a copy with constr") {
 				AVLTree copyTree = tree;
 				AND_THEN("Test if copy has the correct values") {
-					for (int i = 0; i < 1000; i++)
+					for (int i = 0; i < TEST_NUM; i++)
 						REQUIRE(copyTree.exists(values[i]));
 				}
 			}//then
@@ -143,7 +152,7 @@ SCENARIO("Test AVLTree class operators and constructors")
 				AVLTree copyTree;
 				copyTree = tree;
 				AND_THEN("Test if copy has the correct values") {
-					for (int i = 0; i < 1000; i++)
+					for (int i = 0; i < TEST_NUM; i++)
 						REQUIRE(copyTree.exists(values[i]));
 				}
 			}//then
@@ -153,8 +162,9 @@ SCENARIO("Test AVLTree class operators and constructors")
 		AVLTree tree;
 		WHEN("Fill the default tree with 1000 random values") {
 			std::unordered_set<int> set;
-			int values[1000];
-			for (int i = 0; i < 1000; i++) {
+			const int TEST_NUM = 1000;
+			int values[TEST_NUM];
+			for (int i = 0; i < TEST_NUM; i++) {
 				do {
 					values[i] = rand() % 100000;
 					if (i % 2) values[i] *= -1;
@@ -165,14 +175,14 @@ SCENARIO("Test AVLTree class operators and constructors")
 			THEN("Move with constr") {
 				AVLTree movedtree = std::move(tree);
 				AND_THEN("Test if old tree is empty") {
-					for (int i = 0; i < 1000; i++)
+					for (int i = 0; i < TEST_NUM; i++)
 						REQUIRE(!tree.exists(values[i]));
 					REQUIRE(tree.getSize() == 0);
 				}
 				AND_THEN("Test if new tree is moved") {
-					for (int i = 0; i < 1000; i++)
+					for (int i = 0; i < TEST_NUM; i++)
 						REQUIRE(movedtree.exists(values[i]));
-					REQUIRE(movedtree.getSize() == 1000);
+					REQUIRE(movedtree.getSize() == TEST_NUM);
 				}
 			}//then
 			THEN("Move with oper=") {
@@ -196,16 +206,23 @@ SCENARIO("Test AVLTree class operators and constructors")
 SCENARIO("Testing AVLTree class iteration left-parent-right") {
 	GIVEN("Create default tree") {
 		AVLTree tree;
+		const int TEST_NUM = 1000;
+		bool test_arr[TEST_NUM] = {};
 		WHEN("Insert elements") {
-			for (int i = 0; i < 1000; i++) {
+			for (int i = 0; i < TEST_NUM; i++) {
 				tree.insert(i);
 			}
-			REQUIRE(tree.getSize() == 1000);
+			REQUIRE(tree.getSize() == TEST_NUM);
 			int cnt = 0;
 			THEN("Check if iteration is correct with begin and end") {
 				for (auto node : tree) {
-					REQUIRE(node->value == cnt++);
+					cnt++;
+					test_arr[node->value] = true;
 				}
+			}
+			REQUIRE(cnt == TEST_NUM);
+			for (int i = 0; i < TEST_NUM; i++) {
+				REQUIRE(test_arr[i]);
 			}
 		}
 	}//given

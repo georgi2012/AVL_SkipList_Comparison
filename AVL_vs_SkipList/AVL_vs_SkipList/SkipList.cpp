@@ -58,7 +58,7 @@ SkipList::SkipList(const SkipList& other)
 		ourNode = first;
 		while (otherNode->lvlNodes[i]) { //set all pointers for this lvl
 			otherNode = otherNode->lvlNodes[i];//move
-			ourNode->lvlNodes[i] = findNode(first->lvlNodes[0], otherNode->value); //find the right pointer that we have created on lvl 0
+			ourNode->lvlNodes[i] = findNode(first, otherNode->value); //find the right pointer that we have created on lvl 0
 			ourNode = ourNode->lvlNodes[i];//move
 		}
 	}
@@ -103,11 +103,16 @@ void SkipList::clearAll() noexcept
 Node* SkipList::findNode(Node* start, int value) const noexcept
 {
 	if (!start || start->value == value) return start;
-	while (start->lvlNodes[0]) {
-		start = start->lvlNodes[0];
-		if (start->value == value) return start;
+
+	for (int i = lvl; i >= 0; i--) {
+		while (start->lvlNodes[i] && start->lvlNodes[i]->value < value)
+		{
+			start = start->lvlNodes[i];
+		}
 	}
-	return nullptr;
+	//lvl 0 and maybe the wanted node
+	start = start->lvlNodes[0];
+	return start && start->value == value ? start : nullptr;
 }
 
 

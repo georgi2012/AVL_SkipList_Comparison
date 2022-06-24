@@ -59,7 +59,7 @@ private:
 	size_t randomLevel() const noexcept;
 	/// @brief Deletes all nodes. Sets size and lvl to 0. Do not delete the header node
 	void clearAll() noexcept;
-	/// @brief Searches for a node only on lvl 0 and returns it.
+	/// @brief Searches for a node and returns it.
 	/// @param start The header pointer.
 	/// @param value Searched value.
 	Node* findNode(Node* start, int value) const noexcept;

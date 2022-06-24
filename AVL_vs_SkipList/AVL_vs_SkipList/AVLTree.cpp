@@ -1,6 +1,7 @@
 #include "AVLTree.h"
 
-bool AVLTree::exists(int key) const noexcept {
+bool AVLTree::exists(int key) const noexcept
+{
 	return findNode(key, root) != nullptr;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 
+class SListIterator;
 /// @brief Skip list's node 
 struct Node
 {
@@ -64,6 +65,7 @@ private:
 	Node* findNode(Node* start, int value) const noexcept;
 	
 public:
+	friend class SListIterator;
 	//constructors and operators
 	/// @brief Constructor to create a list with specific MAXLVL and fraction.
 	SkipList(const size_t maxLvl, const double fraction);
@@ -97,4 +99,32 @@ public:
 	size_t getSize() const noexcept;
 	/// @brief Method to delete all inserted nodes. Uses clearAll.
 	void clearData() noexcept;
+	//iteration
+	/// @brief Returns iterator to the start (head) of the list
+	SListIterator begin() const noexcept;
+	/// @brief Returns iterator to the end (nullptr) of the tree
+	SListIterator end() const noexcept;
+};
+
+/// @brief Skip List iterator that goes through lvl 0 elements.
+class SListIterator {
+private:
+	//data
+	/// @brief Current node in the list.
+	Node* current=nullptr;
+	//methods
+	/// @brief Constructor that sets the node as current
+	SListIterator(Node* head) noexcept;
+public:
+	friend class SkipList;
+	//methods
+	/// @brief Operator to move the stack to the next node in the order.
+	SListIterator  operator++();
+	/// @brief Operator to get the next Node in the order
+	const Node* operator*() const;
+	/// @brief Operator to check if two Iterators are the same
+	bool operator==(const SListIterator& other) const noexcept;
+	/// @brief Operator to check if two Iterators are not the same
+	bool operator!=(const SListIterator& other) const noexcept;
+
 };

@@ -1,7 +1,7 @@
 #include "SkipList.h"
 
 SkipList::SkipList(const size_t maxLvl, const double _fraction)
-	:first(new Node(Node::HEAD_VAL, maxLvl)), MAXLVL(maxLvl), fraction(_fraction), lvl(0){}
+	:first(new Node(Node::HEAD_VAL, maxLvl)), MAXLVL(maxLvl), fraction(_fraction), lvl(0) {}
 //first node is set as starting only and his value is not used
 
 SkipList::SkipList(SkipList&& other) noexcept
@@ -86,7 +86,7 @@ void SkipList::clearAll() noexcept
 	if (!first || !first->lvlNodes[0]) return;
 	Node* prev = first->lvlNodes[0];
 	Node* cur = prev->lvlNodes[0];
-	
+
 	while (cur) {
 		delete prev;
 		prev = cur;
@@ -190,7 +190,7 @@ bool SkipList::insert(int val) noexcept
 		}
 
 		// create new node with random level generated
-		
+
 		Node* n;
 		try {
 			n = new Node(val, rlevel);
@@ -287,10 +287,9 @@ bool SkipList::remove(int val) noexcept
 	delete[] update;
 }
 
-// Search for element in skip list
 bool SkipList::exists(int val) const noexcept
 {
-	return findNode(first,val) != nullptr;
+	return findNode(first, val) != nullptr;
 
 }
 size_t SkipList::getSize() const noexcept
@@ -299,24 +298,44 @@ size_t SkipList::getSize() const noexcept
 }
 
 
-//// Display skip list level wise
-//void SkipList::displayList() const noexcept
-//{
-//	std::cout << "\n*****Skip List*****" << "\n";
-//	for (int i = 0; i <= lvl; i++)
-//	{
-//		Node* node = first;
-//		std::cout << "Level " << i << ": ";
-//		while (node)
-//		{
-//			std::cout << node->value << " ";
-//			node = node->lvlNodes[i];
-//		}
-//		std::cout << "\n";
-//	}
-//}
 void SkipList::clearData() noexcept
 {
 	clearAll();
 }
 
+
+SListIterator SkipList::begin() const noexcept
+{
+	if (!first) return SListIterator(nullptr);
+	return SListIterator(first->lvlNodes[0]);
+}
+
+SListIterator SkipList::end() const noexcept
+{
+	return SListIterator(nullptr);
+}
+
+//iter
+SListIterator SListIterator::operator++()
+{
+
+	if (current) current = current->lvlNodes[0];
+	return *this;
+}
+
+SListIterator::SListIterator(Node* firstNode) noexcept
+	:current(firstNode) {}
+
+const Node* SListIterator::operator*() const
+{
+	return current;
+}
+
+
+bool SListIterator::operator==(const SListIterator& other) const noexcept {
+	return operator*() == *other;
+}
+
+bool SListIterator::operator!=(const SListIterator& other) const noexcept {
+	return operator*() != *other;
+}

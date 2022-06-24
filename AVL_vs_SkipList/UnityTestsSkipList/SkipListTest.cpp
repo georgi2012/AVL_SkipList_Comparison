@@ -203,28 +203,23 @@ SCENARIO("Test SkipList class operators and constructors")
 	}//given
 
 }//scen
-//SCENARIO("Testing SkipList class iteration left-parent-right") {
-//	GIVEN("Create default slist") {
-//		SkipList slist(4,0.5);
-//		const int TEST_NUM = 1000;
-//		bool test_arr[TEST_NUM] = {};
-//		WHEN("Insert elements") {
-//			for (int i = 0; i < TEST_NUM; i++) {
-//				slist.insert(i);
-//			}
-//			REQUIRE(slist.getSize() == TEST_NUM);
-//			int cnt = 0;
-//			THEN("Check if iteration is correct with begin and end") {
-//				for (auto node : slist) {
-//					cnt++;
-//					test_arr[node->value] = true;
-//				}
-//			}
-//			REQUIRE(cnt == TEST_NUM);
-//			for (int i = 0; i < TEST_NUM; i++) {
-//				REQUIRE(test_arr[i]);
-//			}
-//		}
-//	}//given
-//}//scen
-//
+SCENARIO("Testing SkipList class iteration left-parent-right") {
+	GIVEN("Create default slist") {
+		SkipList slist(4,0.5);
+		const int TEST_NUM = 1000;
+		WHEN("Insert elements") {
+			for (int i = TEST_NUM-1; i >=0; i--) {
+				slist.insert(i);
+			}
+			REQUIRE(slist.getSize() == TEST_NUM);
+			int cnt = 0;
+			THEN("Check if iteration is correct with begin and end") {
+				for (auto node : slist) {
+					REQUIRE(node->value == cnt);
+					cnt++;
+				}
+			}
+		}
+	}//given
+}//scen
+

@@ -1,61 +1,100 @@
 #pragma once
 #include <iostream>
 
-
+/// @brief Skip list's node 
 struct Node
 {
-	static const int UNSET = (4 << (sizeof(int) * 8 - 3));
+	/// @brief Control value of MIN_INT to separate the value of the list's header node
+	static const int HEAD_VAL = (4 << (sizeof(int) * 8 - 3));
+	/// @brief Node's given value
 	int value;
+	/// @brief The lvl of the node - number of pointers that it has
 	const int lvl;
-	// Array to hold pointers to node of different level
-	Node** forward;
+	/// @brief Array to hold pointers to nodes of different levels
+	Node** lvlNodes;
+
+	/// @brief Constructor to set the value and lvl
 	Node(int _value , int _lvl )
-		:value(_value), forward(new Node* [_lvl + 1]),lvl(_lvl)
+		:value(_value), lvlNodes(new Node* [_lvl + 1]),lvl(_lvl)
 	{
-		for (int i = 0; i < _lvl; i++) {
-			forward[i] = nullptr;
+		//All lvls are set to nullptr at first
+		for (int i = 0; i < _lvl+1; i++) {
+			lvlNodes[i] = nullptr;
 		}
-	};
+	}
+
+	///@brief Constructor to delete the nodes data
 	~Node() noexcept
 	{
-		delete[] forward;
-		value = UNSET;
+		delete[] lvlNodes;
+		lvlNodes = nullptr;
 	}
 
 };
 
-// Class for Skip list
+/// @brief SkipList class with no repeating elements allowed
 class SkipList
 {
 private:
 	//data
-	// pointer to header node
+	/// @brief Pointer to the first header node
 	Node* first=nullptr;
-	// Maximum level for this skip list
-	int MAXLVL;
-	// P is the fraction of the nodes with level
-	// i pointers also having level i+1 pointers
-	double P;
-	// current level of skip list
-	int lvl=0;
+
+	/// @brief Maximum level that the list can have
+	size_t MAXLVL;
+
+	/// @brief Fraction of the nodes with level X pointers that also have next level pointers.
+	/// (1-fr) elements will be on lvl 1, (1-fr)^2 on lvl 2 and so on.
+	double fraction;
+
+	/// @brief Current highest lvl on a node in the list
+	size_t lvl=0;
+
+	/// @brief Number of nodes (without the header) that are inserted in the list.
+	size_t size = 0;
 
 	//private methods
-	int randomLevel() const noexcept;
+	/// @brief Returns a random integer value that is less than the MAXLVL
+	size_t randomLevel() const noexcept;
+	/// @brief Deletes all nodes. Sets size and lvl to 0. Do not delete the header node
 	void clearAll() noexcept;
+	/// @brief Searches for a node only on lvl 0 and returns it.
+	/// @param start The header pointer.
+	/// @param value Searched value.
 	Node* findNode(Node* start, int value) const noexcept;
 	
 public:
 	//constructors and operators
-	SkipList(const int maxLvl, const double fraction);
+	/// @brief Constructor to create a list with specific MAXLVL and fraction.
+	SkipList(const size_t maxLvl, const double fraction);
+	/// @brief Copy constructor. Makes a copy and sets it as a header.
+	/// @param other SkipList to be copied. No changes will be made on it.
 	SkipList(const SkipList& other);
+	/// @brief Move contrustor. Takes other's header and data.
+	/// @param other SkipList to be moves. All param will be nullified.
 	SkipList(SkipList&& other) noexcept;
+	/// @brief Makes a SkipList and returns it.
+	/// @param other SkipList to be copied.
 	SkipList& operator=(const SkipList& other);
+	/// @brief Moves a giving SkipList by taking it's data.
+	/// @param other SkipList to be moved. Data will be nullified.
 	SkipList& operator=(SkipList&& other) noexcept;
+	/// @brief Destructor to delete all data. Uses clearAll
 	~SkipList() noexcept;
 	//Public methods
-	bool insertElement(int val) noexcept;
-	bool deleteElement(int val) noexcept;
+	/// @brief Creates a new node with a random lvl and places it in sorted order.
+	/// @param val Value to be given to the new node. No repetitions allowed.
+	/// @return True if node was created and inserted. Else false
+	bool insert(int val) noexcept;
+	/// @brief Removes a specific node with given value if found.
+	/// @param val Value to be removed
+	/// @return True If node was found and removed.
+	bool remove(int val) noexcept;
+	/// @brief Returns If a node with given value exists in the list.
+	/// @param val Searched value
 	bool exists(int val) const noexcept;
-	void displayList() const noexcept;
+	/// @brief Number of currently inserted nodes in the tree
+	size_t getSize() const noexcept;
+	/// @brief Method to delete all inserted nodes. Uses clearAll.
 	void clearData() noexcept;
 };

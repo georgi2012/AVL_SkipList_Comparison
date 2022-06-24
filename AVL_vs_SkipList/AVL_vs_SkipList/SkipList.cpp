@@ -1,13 +1,15 @@
 #include "SkipList.h"
 
-SkipList::SkipList(const int maxLvl, const double fraction)
-	:first(new Node(Node::UNSET, MAXLVL)), MAXLVL(maxLvl), P(fraction), lvl(0) {}
+SkipList::SkipList(const size_t maxLvl, const double _fraction)
+	:first(new Node(Node::HEAD_VAL, maxLvl)), MAXLVL(maxLvl), fraction(_fraction), lvl(0){}
+//first node is set as starting only and his value is not used
 
 SkipList::SkipList(SkipList&& other) noexcept
-	:MAXLVL(other.MAXLVL), P(other.P), lvl(other.lvl), first(other.first)
+	:MAXLVL(other.MAXLVL), fraction(other.fraction), lvl(other.lvl), first(other.first), size(other.size)
 {
 	other.first = nullptr;
 	other.lvl = 0;
+	other.size = 0;
 }
 
 SkipList& SkipList::operator=(const SkipList& other)
@@ -23,8 +25,9 @@ SkipList& SkipList::operator=(SkipList&& other) noexcept
 {
 	if (&other != this) {
 		clearAll();
+		std::swap(other.size, size);
 		std::swap(other.first, first);
-		std::swap(other.P, P);
+		std::swap(other.fraction, fraction);
 		std::swap(other.lvl, lvl);
 		std::swap(other.MAXLVL, MAXLVL);
 	}
@@ -38,41 +41,40 @@ SkipList::SkipList(const SkipList& other)
 	Node* otherNode = other.first;
 	Node* ourNode = first;
 	//create all nodes on lowerst lvl
-	while (otherNode->forward[0]) {
-		otherNode = otherNode->forward[0]; // move to next
+	while (otherNode->lvlNodes[0]) {
+		otherNode = otherNode->lvlNodes[0]; // move to next
 		try {
-			ourNode->forward[0] = new Node(otherNode->value, otherNode->lvl); //create copy
+			ourNode->lvlNodes[0] = new Node(otherNode->value, otherNode->lvl); //create copy
 		}
 		catch (...) {
 			clearAll();
 			throw;
 		}
-		ourNode = ourNode->forward[0]; // move our to next
+		ourNode = ourNode->lvlNodes[0]; // move our to next
 	}
 	//now we have lvl 0, need pointers for other lvls
-	//otherNode = other.first;
-	//ourNode = first;
 	for (int i = 1; i < other.lvl; i++) {
 		otherNode = other.first;
 		ourNode = first;
-		while (otherNode->forward[i]) { //set all pointers for this lvl
-			otherNode = otherNode->forward[i];//move
-			ourNode->forward[i] = findNode(first->forward[0], otherNode->value); //find the right pointer that we have created on lvl 0
-			ourNode = ourNode->forward[i];//move
+		while (otherNode->lvlNodes[i]) { //set all pointers for this lvl
+			otherNode = otherNode->lvlNodes[i];//move
+			ourNode->lvlNodes[i] = findNode(first->lvlNodes[0], otherNode->value); //find the right pointer that we have created on lvl 0
+			ourNode = ourNode->lvlNodes[i];//move
 		}
 	}
 	//
 	MAXLVL = other.MAXLVL;
 	lvl = other.lvl;
-	P = other.P;
+	fraction = other.fraction;
+	size = other.size;
 }
 
 // create random level for node
-int SkipList::randomLevel() const noexcept
+size_t SkipList::randomLevel() const noexcept
 {
 	double r = (double)rand() / RAND_MAX;
-	int randLvl = 0;
-	while (r < P && randLvl < MAXLVL)
+	size_t randLvl = 0;
+	while (r < fraction && randLvl < MAXLVL)
 	{
 		randLvl++;
 		r = (double)rand() / RAND_MAX;
@@ -81,23 +83,28 @@ int SkipList::randomLevel() const noexcept
 }
 void SkipList::clearAll() noexcept
 {
-	if (!first) return;
-	Node* cur = first->forward[0];
-	Node* prev = first;
+	if (!first || !first->lvlNodes[0]) return;
+	Node* prev = first->lvlNodes[0];
+	Node* cur = prev->lvlNodes[0];
+	
 	while (cur) {
 		delete prev;
 		prev = cur;
-		cur = cur->forward[0];
+		cur = cur->lvlNodes[0];
 	}
 	delete prev;
+	for (int i = 0; i < MAXLVL; i++) {
+		first->lvlNodes[i] = nullptr;
+	}
+	size = 0;
 	lvl = 0;
 }
 
 Node* SkipList::findNode(Node* start, int value) const noexcept
 {
-	if (start->value == value) return start;
-	while (start->forward[0]) {
-		start = start->forward[0];
+	if (!start || start->value == value) return start;
+	while (start->lvlNodes[0]) {
+		start = start->lvlNodes[0];
 		if (start->value == value) return start;
 	}
 	return nullptr;
@@ -108,13 +115,25 @@ Node* SkipList::findNode(Node* start, int value) const noexcept
 SkipList::~SkipList() noexcept
 {
 	clearAll();
+	delete first;
+	first = nullptr;
 }
 
 // Insert given key in skip list
-bool SkipList::insertElement(int val) noexcept
+bool SkipList::insert(int val) noexcept
 {
+	if (!first) {
+		try {
+			first = new Node(val, MAXLVL);
+		}
+		catch (...) {
+			return false;
+		}
+	}
+	if (exists(val)) {
+		return false; //no duplicates allowed
+	}
 	Node* cur = first;
-
 	// create update array and initialize it
 	Node** update;
 	try {
@@ -128,25 +147,25 @@ bool SkipList::insertElement(int val) noexcept
 	}
 
 	/*    start from highest level of skip list
-		move the current pointer forward while key
+		move the current pointer lvlNodes while key
 		is greater than key of node next to current
 		Otherwise inserted current in update and
 		move one level down and continue search
 	*/
 	for (int i = lvl; i >= 0; i--)
 	{
-		while (cur->forward[i] != NULL && cur->forward[i]->value < val)
+		while (cur->lvlNodes[i] && cur->lvlNodes[i]->value < val)
 		{
-			cur = cur->forward[i];
+			cur = cur->lvlNodes[i];
 		}
 		update[i] = cur;
 	}
 
-	/* reached level 0 and forward pointer to
+	/* reached level 0 and lvlNodes pointer to
 	   right, which is desired position to
 	   insert key.
 	*/
-	cur = cur->forward[0];
+	cur = cur->lvlNodes[0];
 
 	/* if current is NULL that means we have reached
 	   to end of the level or current's key is not equal
@@ -171,6 +190,7 @@ bool SkipList::insertElement(int val) noexcept
 		}
 
 		// create new node with random level generated
+		
 		Node* n;
 		try {
 			n = new Node(val, rlevel);
@@ -182,18 +202,27 @@ bool SkipList::insertElement(int val) noexcept
 		// insert node by rearranging pointers
 		for (int i = 0; i <= rlevel; i++)
 		{
-			n->forward[i] = update[i]->forward[i];
-			update[i]->forward[i] = n;
+			n->lvlNodes[i] = update[i]->lvlNodes[i];
+			update[i]->lvlNodes[i] = n;
 		}
 		//cout << "Successfully Inserted key " << key << "\n";
+		++size;
 		delete[] update;
 		return true;
 	}
-};
+	delete[] update;
+}
 
 // Delete element from skip list 
-bool SkipList::deleteElement(int val) noexcept
+bool SkipList::remove(int val) noexcept
 {
+	/*if (size == 1 && first->value == val) {
+		--size;
+		delete first;
+		first = nullptr;
+		lvl = 0;
+		return true;
+	}*/
 	Node* current = first;
 
 	// create update array and initialize it
@@ -209,23 +238,24 @@ bool SkipList::deleteElement(int val) noexcept
 	}
 
 	/*    start from highest level of skip list
-		move the current pointer forward while key
+		move the current pointer lvlNodes while key
 		is greater than key of node next to current
 		Otherwise inserted current in update and
 		move one level down and continue search
 	*/
 	for (int i = lvl; i >= 0; i--)
 	{
-		while (current->forward[i] && current->forward[i]->value < val)
+		while (current->lvlNodes[i] && current->lvlNodes[i]->value < val)
 		{
-			current = current->forward[i];
+			current = current->lvlNodes[i];
 		}
 		update[i] = current;
 	}
 
-	/* reached level 0 and forward pointer to
+	/* reached level 0 and lvlNodes pointer to
 	   right, which is possibly our desired node.*/
-	current = current->forward[0];
+
+	current = current->lvlNodes[0];
 
 	// If current node is target node
 	if (current && current->value == val)
@@ -238,69 +268,53 @@ bool SkipList::deleteElement(int val) noexcept
 			/* If at level i, next node is not target
 			   node, break the loop, no need to move
 			  further level */
-			if (update[i]->forward[i] != current)
+			if (update[i]->lvlNodes[i] != current)
 				break;
 
-			update[i]->forward[i] = current->forward[i];
+			update[i]->lvlNodes[i] = current->lvlNodes[i];
 		}
 
 		// Remove levels having no elements
-		while (lvl > 0 && first->forward[lvl] == 0)
+		while (lvl > 0 && !first->lvlNodes[lvl])
 		{
 			--lvl;
 		}
 		//cout << "Successfully deleted key " << key << "\n";
 		delete[] update;
+		--size;
 		return true;
 	}
-};
+	delete[] update;
+}
 
 // Search for element in skip list
 bool SkipList::exists(int val) const noexcept
 {
-	Node* current = first;
+	return findNode(first,val) != nullptr;
 
-	/*    start from highest level of skip list
-		move the current pointer forward while key
-		is greater than key of node next to current
-		Otherwise inserted current in update and
-		move one level down and continue search
-	*/
-	for (int i = lvl; i >= 0; i--)
-	{
-		while (current->forward[i] && current->forward[i]->value < val)
-		{
-			current = current->forward[i];
-		}
-
-	}
-
-	/* reached level 0 and advance pointer to
-	   right, which is possibly our desired node*/
-	current = current->forward[0];
-
-	// If current node have key equal to
-	// search key, we have found our target node
-	return (current && current->value == val);
-
-};
-
-// Display skip list level wise
-void SkipList::displayList() const noexcept
-{
-	std::cout << "\n*****Skip List*****" << "\n";
-	for (int i = 0; i <= lvl; i++)
-	{
-		Node* node = first->forward[i];
-		std::cout << "Level " << i << ": ";
-		while (node != NULL)
-		{
-			std::cout << node->value << " ";
-			node = node->forward[i];
-		}
-		std::cout << "\n";
-	}
 }
+size_t SkipList::getSize() const noexcept
+{
+	return size;
+}
+
+
+//// Display skip list level wise
+//void SkipList::displayList() const noexcept
+//{
+//	std::cout << "\n*****Skip List*****" << "\n";
+//	for (int i = 0; i <= lvl; i++)
+//	{
+//		Node* node = first;
+//		std::cout << "Level " << i << ": ";
+//		while (node)
+//		{
+//			std::cout << node->value << " ";
+//			node = node->lvlNodes[i];
+//		}
+//		std::cout << "\n";
+//	}
+//}
 void SkipList::clearData() noexcept
 {
 	clearAll();

@@ -8,6 +8,7 @@ bool AVLTree::exists(int key) const noexcept
 void AVLTree::clearData() noexcept
 {
 	deleteAll(root);
+	root = nullptr;
 	size = 0;
 }
 

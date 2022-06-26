@@ -1,8 +1,8 @@
 #include "SkipList.h"
 
 SkipList::SkipList(const size_t maxLvl, const double _fraction)
-	:first(new Node(Node::HEAD_VAL, maxLvl)), MAXLVL(maxLvl), fraction(_fraction), lvl(0) {}
-//first node is set as starting only and his value is not used
+	:first(new SLNode(SLNode::HEAD_VAL, maxLvl)), MAXLVL(maxLvl), fraction(_fraction), lvl(0) {}
+//first SLNode is set as starting only and his value is not used
 
 SkipList::SkipList(SkipList&& other) noexcept
 	:MAXLVL(other.MAXLVL), fraction(other.fraction), lvl(other.lvl), first(other.first), size(other.size)
@@ -36,30 +36,30 @@ SkipList& SkipList::operator=(SkipList&& other) noexcept
 
 SkipList::SkipList(const SkipList& other)
 {
-	first = new Node(other.first->value, other.first->lvl); // ok to throw
+	first = new SLNode(other.first->value, other.first->lvl); // ok to throw
 	//copying pointers on different lvls
-	Node* otherNode = other.first;
-	Node* ourNode = first;
-	//create all nodes on lowest lvl
-	while (otherNode->lvlNodes[0]) {
-		otherNode = otherNode->lvlNodes[0]; // move to next
+	SLNode* otherSLNode = other.first;
+	SLNode* ourSLNode = first;
+	//create all SLNodes on lowest lvl
+	while (otherSLNode->lvlSLNodes[0]) {
+		otherSLNode = otherSLNode->lvlSLNodes[0]; // move to next
 		try {
-			ourNode->lvlNodes[0] = new Node(otherNode->value, otherNode->lvl); //create copy
+			ourSLNode->lvlSLNodes[0] = new SLNode(otherSLNode->value, otherSLNode->lvl); //create copy
 		}
 		catch (...) {
 			clearAll();
 			throw;
 		}
-		ourNode = ourNode->lvlNodes[0]; // move our to next
+		ourSLNode = ourSLNode->lvlSLNodes[0]; // move our to next
 	}
 	//now we have lvl 0, need pointers for other lvls
 	for (int i = 1; i < other.lvl; i++) {
-		otherNode = other.first;
-		ourNode = first;
-		while (otherNode->lvlNodes[i]) { //set all pointers for this lvl
-			otherNode = otherNode->lvlNodes[i];//move
-			ourNode->lvlNodes[i] = findNode(first, otherNode->value); //find the right pointer that we have created on lvl 0
-			ourNode = ourNode->lvlNodes[i];//move
+		otherSLNode = other.first;
+		ourSLNode = first;
+		while (otherSLNode->lvlSLNodes[i]) { //set all pointers for this lvl
+			otherSLNode = otherSLNode->lvlSLNodes[i];//move
+			ourSLNode->lvlSLNodes[i] = findSLNode(first, otherSLNode->value); //find the right pointer that we have created on lvl 0
+			ourSLNode = ourSLNode->lvlSLNodes[i];//move
 		}
 	}
 	//
@@ -69,7 +69,7 @@ SkipList::SkipList(const SkipList& other)
 	size = other.size;
 }
 
-// create random level for node
+// create random level for SLNode
 size_t SkipList::randomLevel() const noexcept
 {
 	double r = (double)rand() / RAND_MAX;
@@ -83,35 +83,35 @@ size_t SkipList::randomLevel() const noexcept
 }
 void SkipList::clearAll() noexcept
 {
-	if (!first || !first->lvlNodes[0]) return;
-	Node* prev = first->lvlNodes[0];
-	Node* cur = prev->lvlNodes[0];
+	if (!first || !first->lvlSLNodes[0]) return;
+	SLNode* prev = first->lvlSLNodes[0];
+	SLNode* cur = prev->lvlSLNodes[0];
 
 	while (cur) {
 		delete prev;
 		prev = cur;
-		cur = cur->lvlNodes[0];
+		cur = cur->lvlSLNodes[0];
 	}
 	delete prev;
-	for (int i = 0; i < MAXLVL; i++) {
-		first->lvlNodes[i] = nullptr;
+	for (int i = 0; i <= MAXLVL; i++) {
+		first->lvlSLNodes[i] = nullptr;
 	}
 	size = 0;
 	lvl = 0;
 }
 
-Node* SkipList::findNode(Node* start, int value) const noexcept
+SLNode* SkipList::findSLNode(SLNode* start, int value) const noexcept
 {
 	if (!start || start->value == value) return start;
 
 	for (int i = lvl; i >= 0; i--) {
-		while (start->lvlNodes[i] && start->lvlNodes[i]->value < value)
+		while (start->lvlSLNodes[i] && start->lvlSLNodes[i]->value < value)
 		{
-			start = start->lvlNodes[i];
+			start = start->lvlSLNodes[i];
 		}
 	}
-	//lvl 0 and maybe the wanted node
-	start = start->lvlNodes[0];
+	//lvl 0 and maybe the wanted SLNode
+	start = start->lvlSLNodes[0];
 	return start && start->value == value ? start : nullptr;
 }
 
@@ -129,7 +129,7 @@ bool SkipList::insert(int val) noexcept
 {
 	if (!first) {
 		try {
-			first = new Node(val, MAXLVL);
+			first = new SLNode(SLNode::HEAD_VAL, MAXLVL);
 		}
 		catch (...) {
 			return false;
@@ -138,11 +138,11 @@ bool SkipList::insert(int val) noexcept
 	if (exists(val)) {
 		return false; //no duplicates allowed
 	}
-	Node* cur = first;
+	SLNode* cur = first;
 	// create update array and initialize it
-	Node** update;
+	SLNode** update;
 	try {
-		update = new Node * [MAXLVL + 1];
+		update = new SLNode * [MAXLVL + 1];
 	}
 	catch (...) {
 		return false;
@@ -152,19 +152,19 @@ bool SkipList::insert(int val) noexcept
 	}
 
 	//start the search from highest lvl
-	//update keeps the current value on higher nodes
+	//update keeps the current value on higher SLNodes
 	//when we move down
 	for (int i = lvl; i >= 0; i--)
 	{
-		while (cur->lvlNodes[i] && cur->lvlNodes[i]->value < val)
+		while (cur->lvlSLNodes[i] && cur->lvlSLNodes[i]->value < val)
 		{
-			cur = cur->lvlNodes[i];
+			cur = cur->lvlSLNodes[i];
 		}
 		update[i] = cur;
 	}
 
 	//lvl 0 and the next pointer should be the wanted place to insert
-	cur = cur->lvlNodes[0];
+	cur = cur->lvlSLNodes[0];
 
 	//if nullptr -> end of lvl and no dublicates
 	// insert between update[0] and current
@@ -182,20 +182,20 @@ bool SkipList::insert(int val) noexcept
 			lvl = rlevel;
 		}
 
-		// New node with random level
-		Node* n;
+		// New SLNode with random level
+		SLNode* n;
 		try {
-			n = new Node(val, rlevel);
+			n = new SLNode(val, rlevel);
 		}
 		catch (...) {
 			delete[] update;
 			return false;
 		}
-		// insert node by rearranging pointers
+		// insert SLNode by rearranging pointers
 		for (int i = 0; i <= rlevel; i++)
 		{
-			n->lvlNodes[i] = update[i]->lvlNodes[i];
-			update[i]->lvlNodes[i] = n;
+			n->lvlSLNodes[i] = update[i]->lvlSLNodes[i];
+			update[i]->lvlSLNodes[i] = n;
 		}
 
 		++size;
@@ -209,12 +209,12 @@ bool SkipList::insert(int val) noexcept
 // Delete element from skip list 
 bool SkipList::remove(int val) noexcept
 {
-	Node* current = first;
+	SLNode* current = first;
 
 	// create update array and initialize it
-	Node** update;
+	SLNode** update;
 	try {
-		update = new Node * [MAXLVL + 1];
+		update = new SLNode * [MAXLVL + 1];
 	}
 	catch (...) {
 		return false;
@@ -224,35 +224,35 @@ bool SkipList::remove(int val) noexcept
 	}
 
 	//start the search from highest lvl
-	//update keeps the current value on higher nodes
+	//update keeps the current value on higher SLNodes
 	//when we move down
 	for (int i = lvl; i >= 0; i--)
 	{
-		while (current->lvlNodes[i] && current->lvlNodes[i]->value < val)
+		while (current->lvlSLNodes[i] && current->lvlSLNodes[i]->value < val)
 		{
-			current = current->lvlNodes[i];
+			current = current->lvlSLNodes[i];
 		}
 		update[i] = current;
 	}
 
-	//reached lvl 0 and maybe thats the wanted node
-	current = current->lvlNodes[0];
+	//reached lvl 0 and maybe thats the wanted SLNode
+	current = current->lvlSLNodes[0];
 
-	//if is searched node
+	//if is searched SLNode
 	if (current && current->value == val)
 	{
 		//starts from lowest and rearrange to remove the target
 		for (int i = 0; i <= lvl; i++)
 		{
-			//if is not wanted node on this lvl, more on next
-			if (update[i]->lvlNodes[i] != current)
+			//if is not wanted SLNode on this lvl, more on next
+			if (update[i]->lvlSLNodes[i] != current)
 				break;
 			//update
-			update[i]->lvlNodes[i] = current->lvlNodes[i];
+			update[i]->lvlSLNodes[i] = current->lvlSLNodes[i];
 		}
 
 		// Remove empty lvls
-		while (lvl > 0 && !first->lvlNodes[lvl])
+		while (lvl > 0 && !first->lvlSLNodes[lvl])
 		{
 			--lvl;
 		}
@@ -266,7 +266,7 @@ bool SkipList::remove(int val) noexcept
 
 bool SkipList::exists(int val) const noexcept
 {
-	return findNode(first, val) != nullptr;
+	return findSLNode(first, val) != nullptr;
 
 }
 size_t SkipList::getSize() const noexcept
@@ -284,7 +284,7 @@ void SkipList::clearData() noexcept
 SListIterator SkipList::begin() const noexcept
 {
 	if (!first) return SListIterator(nullptr);
-	return SListIterator(first->lvlNodes[0]);
+	return SListIterator(first->lvlSLNodes[0]);
 }
 
 SListIterator SkipList::end() const noexcept
@@ -296,14 +296,14 @@ SListIterator SkipList::end() const noexcept
 SListIterator SListIterator::operator++()
 {
 
-	if (current) current = current->lvlNodes[0];
+	if (current) current = current->lvlSLNodes[0];
 	return *this;
 }
 
-SListIterator::SListIterator(Node* firstNode) noexcept
-	:current(firstNode) {}
+SListIterator::SListIterator(SLNode* firstSLNode) noexcept
+	:current(firstSLNode) {}
 
-const Node* SListIterator::operator*() const
+const SLNode* SListIterator::operator*() const
 {
 	return current;
 }

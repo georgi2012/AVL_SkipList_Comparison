@@ -56,6 +56,20 @@ SCENARIO("Testing SkipList class insertion") {
 			THEN("Test for getSize") {
 				REQUIRE(slist.getSize() == TEST_NUM);
 			}//then
+			THEN("Test for clear functon") {
+				slist.clearData();
+				REQUIRE(slist.getSize() == 0);
+				for (int i = 0; i < TEST_NUM; i++)
+					REQUIRE(!slist.exists(values[i]));
+				AND_THEN("Test for reinsert") {
+					for (int i = 0; i < TEST_NUM / 4; i++) {
+						REQUIRE(slist.insert(values[i]));
+					}
+					for (int i = 0; i < TEST_NUM / 4; i++) {
+						REQUIRE(slist.exists(values[i]));
+					}
+				}
+			}//then
 			
 		}//when
 	}//given

@@ -104,21 +104,21 @@ SCENARIO("Testing AVLTree class deletion") {
 				set.insert(values[i]);
 				tree.insert(values[i]);
 			}
-			THEN("Test removing half of them") {
+			THEN("Test removing all of them") {
 				REQUIRE(tree.getSize() == TEST_NUM);
-				for (int i = 0; i < TEST_NUM/2; i++) {
-					tree.remove(values[i]);
+				for (int i = 0; i < TEST_NUM; i++) {
+					REQUIRE(!tree.remove(values[i]));
 				}
-				for (int i = 0; i < TEST_NUM/2; i++) {
+				for (int i = 0; i < TEST_NUM; i++) {
 					REQUIRE(!tree.exists(values[i]));
 
 				}
-				for (int i = TEST_NUM/2; i < TEST_NUM; i++) {
-					//std::cout << i << " ";;
-					REQUIRE(tree.exists(values[i]));
+				//for (int i = TEST_NUM/2; i < TEST_NUM; i++) {
+				//	//std::cout << i << " ";;
+				//	REQUIRE(tree.exists(values[i]));
 
-				}
-				REQUIRE(tree.getSize() == TEST_NUM/2);
+				//}
+				REQUIRE(tree.getSize() == 0);// == TEST_NUM/2);
 			}
 
 		}//when

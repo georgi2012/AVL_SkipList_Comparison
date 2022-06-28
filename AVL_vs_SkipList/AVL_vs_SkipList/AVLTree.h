@@ -11,6 +11,8 @@ struct Node {
 	Node* left, * right;
 	/// @brief Value of the node 
 	int value;
+	/// @brief Height of the subtree of that node 
+	short height = 0;
 	/// @brief Default constructor that sets value
 	Node(const int value, Node* left = nullptr, Node* right = nullptr)
 		: value(value), left(left), right(right) {}

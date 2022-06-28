@@ -29,6 +29,9 @@ Node* AVLTree::leftRotate(Node* node) noexcept
 	Node* farLeft = rightNode->left;
 	rightNode->left = node;
 	node->right = farLeft;
+	//update height
+	node->height = 1 + std::max(height(node->left), height(node->right));
+	rightNode->height = 1 + std::max(height(rightNode->left), height(rightNode->right));
 	return rightNode;
 }
 
@@ -59,6 +62,7 @@ Node* AVLTree::balanceTreeDeletion(const int val, Node* node) noexcept
 	int bRight = height(node->right);
 	int balance = bLeft - bRight;
 	if (balance > 1 && val && bLeft >= 0) {
+		//node->height=
 		return rightRotate(node);// Left Left Case
 	}
 	if (balance < -1 && val && bRight <= 0) {
@@ -83,6 +87,9 @@ Node* AVLTree::rightRotate(Node* node) noexcept
 	Node* farRight = leftNode->right;
 	leftNode->right = node;
 	node->left = farRight;
+	//update height
+	node->height = std::max(height(node->left), height(node->right));
+	leftNode->height = std::max(height(leftNode->left), height(leftNode->right));
 	return leftNode;
 }
 
@@ -100,6 +107,7 @@ Node* AVLTree::insertNode(const int val, Node* node)
 	else {//equal not permitted
 		throw std::logic_error("Node already exists");
 	}
+	node->height = 1 + std::max(height(node->left), height(node->right));
 	return balanceTreeInsertion(val, node); //!balancing part!
 }
 
@@ -134,7 +142,7 @@ Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
 			else {
 				delete temp;
 			}
-				temp = nullptr;
+			temp = nullptr;
 			--size;
 		}
 		else
@@ -146,6 +154,8 @@ Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
 	}
 	if (!node)
 		return node;
+	//height update
+	node->height = 1 + std::max(height(node->left), height(node->right));
 	return balanceTreeDeletion(val, node);
 
 }
@@ -174,10 +184,12 @@ void AVLTree::deleteAll(Node* node) noexcept
 
 int AVLTree::height(const Node* node) const noexcept
 {
-	if (!node) return 0;
+	/*if (!node) return 0;
 	int leftH = height(node->left);
 	int rightH = height(node->right);
-	return 1 + (leftH > rightH ? leftH : rightH);
+	return 1 + (leftH > rightH ? leftH : rightH);*/
+	if (!node) return 0;
+	return node->height;
 }
 
 Node* AVLTree::findNode(const int val, Node* node) const noexcept {
@@ -265,7 +277,7 @@ size_t AVLTree::getSize() const noexcept
 bool AVLTree::remove(int key) noexcept
 {
 	auto oldSize = size;
-	root=deleteNode(key, root);
+	root = deleteNode(key, root);
 	return oldSize > size;
 }
 

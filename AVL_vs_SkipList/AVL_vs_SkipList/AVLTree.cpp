@@ -125,7 +125,7 @@ Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
 			}
 			else
 			{
-				*node = *temp;
+				*node = *temp; //copy values
 			}
 			if (temp == root) {
 				delete root;
@@ -134,6 +134,7 @@ Node* AVLTree::deleteNode(const int val, Node* node) noexcept {
 			else {
 				delete temp;
 			}
+				temp = nullptr;
 			--size;
 		}
 		else
@@ -264,7 +265,7 @@ size_t AVLTree::getSize() const noexcept
 bool AVLTree::remove(int key) noexcept
 {
 	auto oldSize = size;
-	deleteNode(key, root);
+	root=deleteNode(key, root);
 	return oldSize > size;
 }
 

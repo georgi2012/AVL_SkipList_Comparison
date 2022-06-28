@@ -5,7 +5,9 @@
 #include <cmath>
 //
 #include "catch.hpp"
-#include "../AVL_vs_SkipList/AVLTree.h"
+#include "../AVL_vs_SkipList/AVLTree.h" //"AVLDel.h"//
+
+
 
 
 SCENARIO("Testing AVLTree class insertion") {
@@ -107,7 +109,7 @@ SCENARIO("Testing AVLTree class deletion") {
 			THEN("Test removing all of them") {
 				REQUIRE(tree.getSize() == TEST_NUM);
 				for (int i = 0; i < TEST_NUM; i++) {
-					REQUIRE(!tree.remove(values[i]));
+					REQUIRE(tree.remove(values[i]));
 				}
 				for (int i = 0; i < TEST_NUM; i++) {
 					REQUIRE(!tree.exists(values[i]));

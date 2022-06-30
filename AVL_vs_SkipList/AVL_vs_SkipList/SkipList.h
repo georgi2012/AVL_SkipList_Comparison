@@ -30,6 +30,10 @@ struct SLNode
 		delete[] lvlSLNodes;
 		lvlSLNodes = nullptr;
 	}
+	///@brief Returns the bytes used by this node atm
+	size_t getBytesUsed() {
+		return sizeof(value) + sizeof(lvl) + sizeof(SLNode*) * (lvl + 1);
+	}
 
 };
 
@@ -104,6 +108,8 @@ public:
 	SListIterator begin() const noexcept;
 	/// @brief Returns iterator to the end (nullptr) of the tree
 	SListIterator end() const noexcept;
+	/// @brief Returns how many bytes are used by the structure atm
+	size_t getBytesUsed() const noexcept;
 };
 
 /// @brief Skip List iterator that goes through lvl 0 elements.

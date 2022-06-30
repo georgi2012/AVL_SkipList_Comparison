@@ -292,6 +292,17 @@ SListIterator SkipList::end() const noexcept
 	return SListIterator(nullptr);
 }
 
+size_t SkipList::getBytesUsed() const noexcept
+{
+	size_t nodesBytes = 0;
+	SLNode* cur = first;
+	while (cur) {
+		nodesBytes += cur->getBytesUsed();
+		cur = cur->lvlSLNodes[0];
+	}
+	return sizeof(SkipList) + nodesBytes + sizeof(SLNode::HEAD_VAL);
+}
+
 //iter
 SListIterator SListIterator::operator++()
 {

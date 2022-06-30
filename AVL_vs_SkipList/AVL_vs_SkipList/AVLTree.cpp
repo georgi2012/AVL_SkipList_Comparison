@@ -55,6 +55,11 @@ Node* AVLTree::balanceTreeInsertion(const int val, Node* node) noexcept
 	return node;
 }
 
+size_t AVLTree::getBytesUsed() const noexcept
+{
+	return size * sizeof(Node) + sizeof(AVLTree);
+}
+
 
 Node* AVLTree::balanceTreeDeletion(const int val, Node* node) noexcept
 {

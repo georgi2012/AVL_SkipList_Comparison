@@ -110,6 +110,8 @@ public:
 	AVLIterator begin() const noexcept;
 	/// @brief Returns iterator to the end (nullptr) of the tree
 	AVLIterator end() const noexcept;
+	/// @brief Returns the memory used by the structure in bytes
+	size_t getBytesUsed() const noexcept;
 };
 
 /// @brief AVL Tree iterator using left-parent-right traversal

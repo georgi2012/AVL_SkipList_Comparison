@@ -124,7 +124,6 @@ SkipList::~SkipList() noexcept
 	first = nullptr;
 }
 
-// Insert given key in skip list
 bool SkipList::insert(int val) noexcept
 {
 	if (!first) {

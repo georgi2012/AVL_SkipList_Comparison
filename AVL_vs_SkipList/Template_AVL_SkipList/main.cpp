@@ -1,5 +1,5 @@
-#include "AVLTree.h"
-#include "SkipList.h"
+#include "T_AVLTree.h"
+#include "T_SkipList.h"
 #include <chrono>
 #include <unordered_set>
 #include <stdlib.h>     /* srand, rand */
@@ -15,7 +15,7 @@ using std::cout;
 using std::string;
 using std::to_string;
 
-//SkipList
+//SkipList<int>
 int getOptimalLvlNum(int expectedSize, double p = 0.5) {
 	return log2(expectedSize) / log2(1 / p) + 1; //log(p^-1)N
 }
@@ -37,8 +37,8 @@ TestHelper findAvgInsertDelFindNotRand(const unsigned elemCnt, const int testsCn
 	std::vector<int> set;
 	int value;
 	const int intMax = ~(1 << (sizeof(int) * 8 - 1));
-	SkipList list(getOptimalLvlNum(elemCnt), 0.5);
-	AVLTree tree;
+	SkipList<int> list(getOptimalLvlNum(elemCnt), 0.5);
+	AVLTree<int> tree;
 	if (elemCnt > 20000) {
 		std::cout << "(Due to the many elements choice, random number generation might be really slow.)\n";
 	}
@@ -129,8 +129,8 @@ TestHelper findAvgInsertDelFind(const unsigned elemCnt, const int testsCnt = 30)
 	std::unordered_set<int> set;
 	int value;
 	const int intMax = ~(1 << (sizeof(int) * 8 - 1));
-	SkipList list(getOptimalLvlNum(elemCnt), 0.5);
-	AVLTree tree;
+	SkipList<int> list(getOptimalLvlNum(elemCnt), 0.5);
+	AVLTree<int> tree;
 	if (elemCnt > 20000) {
 		std::cout << "(Due to the many elements choice, random number generation might be really slow.)\n";
 	}
@@ -222,13 +222,13 @@ void printPrettyTable(TestHelper& data) {
 	string slData[] = { std::to_string((int)data.insertion[SLIST_IND]) ,
 					   std::to_string((int)data.deletion[SLIST_IND]) ,
 					   std::to_string((int)data.search[SLIST_IND]),
-					   std::to_string((int)data.memory[SLIST_IND])};
+					   std::to_string((int)data.memory[SLIST_IND]) };
 	const int firstColWidth = 10;//insertion,del,search -  "(in ns)"
 	const int otherColsWidth = 10;
 	string percentComp[] = { std::to_string(((int)data.insertion[AVL_IND]) * 100 / ((int)data.insertion[SLIST_IND])) ,
 					  std::to_string(((int)data.deletion[AVL_IND]) * 100 / ((int)data.deletion[SLIST_IND])) ,
 					  std::to_string(((int)data.search[AVL_IND]) * 100 / ((int)data.search[SLIST_IND])),
-				      std::to_string(((int)data.memory[AVL_IND]) * 100 / ((int)data.memory[SLIST_IND])) };
+					  std::to_string(((int)data.memory[AVL_IND]) * 100 / ((int)data.memory[SLIST_IND])) };
 	//row 1
 	std::cout << "-----------------------------------------------\n";
 	//string(firstColWidth, ' ')
@@ -249,9 +249,9 @@ void printPrettyTable(TestHelper& data) {
 		std::string(otherColsWidth - slData[2].size(), ' ') << slData[2] << "ns|" << //third
 		std::string(otherColsWidth - percentComp[2].size() - 1, ' ') << percentComp[2] << "%|" << std::endl; //forth
 	std::cout << "Memory    |" << //first col
-		std::string(otherColsWidth - avlData[3].size()+1, ' ') << avlData[3] << "b|" << //second col
-		std::string(otherColsWidth - slData[3].size()+1, ' ') << slData[3] << "b|" << //third
-		std::string(otherColsWidth - percentComp[3].size()-1, ' ') << percentComp[3] << "%|" << std::endl; //forth
+		std::string(otherColsWidth - avlData[3].size() + 1, ' ') << avlData[3] << "b|" << //second col
+		std::string(otherColsWidth - slData[3].size() + 1, ' ') << slData[3] << "b|" << //third
+		std::string(otherColsWidth - percentComp[3].size() - 1, ' ') << percentComp[3] << "%|" << std::endl; //forth
 	std::cout << "-----------------------------------------------\n";
 }
 
@@ -263,8 +263,8 @@ int main() {
 		const int elemCnt = 30'000;
 		std::cout << "Running " << testNum << " tests with " << elemCnt << " elements each and\n";
 		std::cout << "taking their average results per operation...\n";
-		TestHelper data = findAvgInsertDelFind(elemCnt, testNum);
-		//TestHelper data = findAvgInsertDelFindNotRand(elemCnt, testNum);
+		//TestHelper data = findAvgInsertDelFind(elemCnt, testNum);
+		TestHelper data = findAvgInsertDelFindNotRand(elemCnt, testNum);
 		std::cout << "\nResult:\n\n";
 
 		printPrettyTable(data);
@@ -285,7 +285,7 @@ Notes:
 - With consequent numbers SkipList is way better than AVL
 - Memory usage is nearly always the same
 - In release mode much more optimizations can be done in the tree
-  and it can become faster 
+  and it can become faster
 
 -With random numbers: (Debug mode) (30 tests)
 with 30'000
@@ -351,6 +351,15 @@ Insertion |       287ns|       645ns|       44%|
 Deletion  |       266ns|       312ns|       85%|
 Search    |       138ns|       272ns|       50%|
 Memory    |     480008b|     480084b|       99%|
+-----------------------------------------------
+Release mode:
+Not randomized for 1'000'000
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |       189ns|       408ns|       46%|
+Deletion  |       123ns|       109ns|      112%|
+Search    |        75ns|        95ns|       78%|
+Memory    |   16000008b|   16000829b|       99%|
 -----------------------------------------------
 
 

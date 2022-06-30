@@ -7,9 +7,7 @@
 #include "../UnitTests/catch.hpp"
 #include "../AVL_vs_SkipList/SkipList.h"
 
-//del
 
-//del
 SCENARIO("Testing SkipList class insertion") {
 	srand(time(NULL));
 	GIVEN("Creating default object with 4 lvls and 0.5 fraction") {

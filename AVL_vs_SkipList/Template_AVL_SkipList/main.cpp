@@ -263,8 +263,8 @@ int main() {
 		const int elemCnt = 30'000;
 		std::cout << "Running " << testNum << " tests with " << elemCnt << " elements each and\n";
 		std::cout << "taking their average results per operation...\n";
-		//TestHelper data = findAvgInsertDelFind(elemCnt, testNum);
-		TestHelper data = findAvgInsertDelFindNotRand(elemCnt, testNum);
+		TestHelper data = findAvgInsertDelFind(elemCnt, testNum);
+		//TestHelper data = findAvgInsertDelFindNotRand(elemCnt, testNum);
 		std::cout << "\nResult:\n\n";
 
 		printPrettyTable(data);

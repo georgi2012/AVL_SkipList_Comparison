@@ -9,20 +9,20 @@ template <class T>
 class SkipList
 {
 private:
+
 	struct SLNode
 	{
 		/// @brief SLNode's given value
 		T value;
-		/// @brief The lvl of the SLNode - number of pointers that it has
-		const int lvl;
 		/// @brief Array to hold pointers to SLNodes of different levels
 		SLNode** lvlSLNodes;
-
+		/// @brief The lvl of the SLNode - number of pointers that it has
+		const int lvl;
 		/// @brief Constructor to set the value and lvl
 		SLNode(const T& _value, int _lvl)
 			:value(_value), lvlSLNodes(new SLNode* [_lvl + 1]), lvl(_lvl)
 		{
-			//All lvls are set to nullptr at first
+			//All lvls are set to nullptr at header
 			for (int i = 0; i < _lvl + 1; i++) {
 				lvlSLNodes[i] = nullptr;
 			}
@@ -36,24 +36,32 @@ private:
 		}
 		///@brief Returns the bytes used by this node atm
 		size_t getBytesUsed() {
-			return sizeof(value) + sizeof(lvl) + sizeof(SLNode*) * (lvl + 1);
+			size_t bytes = sizeof(SLNode);
+			if (bytes % alignof(SLNode) != 0) {
+				bytes = (bytes / alignof(SLNode) + 1) * alignof(SLNode);
+			}
+			return sizeof(SLNode) + sizeof(SLNode*) * (lvl + 1);
 		}
 
 	};
 
 	//data
+	/// @brief The level that is expected to be the maximum useful such as log2(32GB) can store its elements
+	static const short MAX_POSSIBLE_LVL = 35;
+	/// @brief Pointers used for insertion and deletion level fixing
+	SLNode* update[MAX_POSSIBLE_LVL] = {};
 	/// @brief Pointer to the first header SLNode
-	SLNode* first=nullptr;
-
-	/// @brief Maximum level that the list can have
-	size_t MAXLVL;
+	SLNode* first = nullptr;
 
 	/// @brief Fraction of the SLNodes with level X pointers that also have next level pointers.
 	/// (1-fr) elements will be on lvl 1, (1-fr)^2 on lvl 2 and so on.
 	double fraction;
 
+	/// @brief Maximum level that the list can have
+	size_t MAXLVL;
+
 	/// @brief Current highest lvl on a SLNode in the list
-	size_t lvl=0;
+	size_t lvl = 0;
 
 	/// @brief Number of SLNodes (without the header) that are inserted in the list.
 	size_t size = 0;
@@ -67,7 +75,7 @@ private:
 	/// @param start The header pointer.
 	/// @param value Searched value.
 	SLNode* findSLNode(SLNode* start, const T& value) const noexcept;
-	
+
 public:
 	friend class SListIterator<T>;
 	//constructors and operators
@@ -110,6 +118,8 @@ public:
 	SListIterator<T> end() const noexcept;
 	/// @brief Returns how many bytes are used by the structure atm
 	size_t getBytesUsed() const noexcept;
+	/// @brief Prints on standart output values on all lvls on the list
+	void printLvls() const noexcept;
 };
 
 /// @brief Skip List iterator that goes through lvl 0 elements.
@@ -118,7 +128,7 @@ class SListIterator {
 private:
 	//data
 	/// @brief Current SLNode in the list.
-	typename SkipList<T>::SLNode* current=nullptr;
+	typename SkipList<T>::SLNode* current = nullptr;
 	//methods
 	/// @brief Constructor that sets the SLNode as current
 	SListIterator(typename SkipList<T>::SLNode* head) noexcept;
@@ -141,8 +151,14 @@ public:
 
 template <class T>
 SkipList<T>::SkipList(const size_t maxLvl, const double _fraction)
-	:first(new SLNode(T(), maxLvl)), MAXLVL(maxLvl), fraction(_fraction), lvl(0) {}
-//first SLNode is set as starting only and his value is not used
+	: MAXLVL(maxLvl), fraction(_fraction), lvl(0)
+{
+	if (fraction < 0 || fraction >= 1) fraction = 0.5;
+	if (MAXLVL == 0) MAXLVL = 3;
+	else if (MAXLVL > MAX_POSSIBLE_LVL) MAXLVL = MAX_POSSIBLE_LVL;
+	first = new SLNode(T(), MAXLVL);
+}
+//header SLNode is set as starting only and his value is not used
 
 template <class T>
 SkipList<T>::SkipList<T>(SkipList<T>&& other) noexcept
@@ -179,38 +195,19 @@ SkipList<T>& SkipList<T>::operator=(SkipList<T>&& other) noexcept
 
 template <class T>
 SkipList<T>::SkipList<T>(const SkipList<T>& other)
+	: MAXLVL(other.MAXLVL), fraction(other.fraction)
 {
-	first = new SLNode(other.first->value, other.first->lvl); // ok to throw
-	//copying pointers on different lvls
-	SLNode* otherSLNode = other.first;
-	SLNode* ourSLNode = first;
-	//create all SLNodes on lowest lvl
-	while (otherSLNode->lvlSLNodes[0]) {
-		otherSLNode = otherSLNode->lvlSLNodes[0]; // move to next
-		try {
-			ourSLNode->lvlSLNodes[0] = new SLNode(otherSLNode->value, otherSLNode->lvl); //create copy
-		}
-		catch (...) {
-			clearAll();
-			throw;
-		}
-		ourSLNode = ourSLNode->lvlSLNodes[0]; // move our to next
-	}
-	//now we have lvl 0, need pointers for other lvls
-	for (int i = 1; i < other.lvl; i++) {
-		otherSLNode = other.first;
-		ourSLNode = first;
-		while (otherSLNode->lvlSLNodes[i]) { //set all pointers for this lvl
-			otherSLNode = otherSLNode->lvlSLNodes[i];//move
-			ourSLNode->lvlSLNodes[i] = findSLNode(first, otherSLNode->value); //find the right pointer that we have created on lvl 0
-			ourSLNode = ourSLNode->lvlSLNodes[i];//move
+	try {
+		first = new SLNode(other.first->value, other.first->lvl);
+		for (auto entry : other) {
+			insert(entry->value);
 		}
 	}
-	//
-	MAXLVL = other.MAXLVL;
-	lvl = other.lvl;
-	fraction = other.fraction;
-	size = other.size;
+	catch (...) {//fix
+		clearAll();
+		throw;
+	}
+
 }
 
 
@@ -279,26 +276,10 @@ SkipList<T>::~SkipList<T>() noexcept
 template <class T>
 bool SkipList<T>::insert(const T& val) noexcept
 {
-	if (!first) {
-		try {
-			first = new SLNode(T(), MAXLVL);
-		}
-		catch (...) {
-			return false;
-		}
-	}
-	if (exists(val)) {
-		return false; //no duplicates allowed
-	}
+
 	SLNode* cur = first;
 	// create update array and initialize it
-	SLNode** update;
-	try {
-		update = new SLNode * [MAXLVL + 1];
-	}
-	catch (...) {
-		return false;
-	}
+
 	for (int i = 0; i < MAXLVL + 1; i++) {
 		update[i] = nullptr;
 	}
@@ -336,13 +317,10 @@ bool SkipList<T>::insert(const T& val) noexcept
 
 		// New SLNode with random level
 		SLNode* n;
-		try {
-			n = new SLNode(val, rlevel);
-		}
-		catch (...) {
-			delete[] update;
-			return false;
-		}
+
+		n = new SLNode(val, rlevel);
+		//ok to throw
+		
 		// insert SLNode by rearranging pointers
 		for (int i = 0; i <= rlevel; i++)
 		{
@@ -351,10 +329,10 @@ bool SkipList<T>::insert(const T& val) noexcept
 		}
 
 		++size;
-		delete[] update;
+
 		return true;
 	}
-	delete[] update;
+	//no dublication allowed
 	return false;
 }
 
@@ -363,14 +341,6 @@ bool SkipList<T>::remove(const T& val) noexcept
 {
 	SLNode* current = first;
 
-	// create update array and initialize it
-	SLNode** update;
-	try {
-		update = new SLNode * [MAXLVL + 1];
-	}
-	catch (...) {
-		return false;
-	}
 	for (int i = 0; i < MAXLVL + 1; i++) {
 		update[i] = nullptr;
 	}
@@ -408,19 +378,19 @@ bool SkipList<T>::remove(const T& val) noexcept
 		{
 			--lvl;
 		}
-		delete[] update;
+		
 		--size;
 		return true;
 	}
-	delete[] update;
+
 	return false; //not found
 }
 
 template <class T>
 bool SkipList<T>::exists(const T& val) const noexcept
 {
+	//return findSLNode(header[lvl], val) != nullptr;
 	return findSLNode(first, val) != nullptr;
-
 }
 
 template <class T>
@@ -433,6 +403,21 @@ template <class T>
 void SkipList<T>::clearData() noexcept
 {
 	clearAll();
+}
+
+
+template<class T>
+inline void SkipList<T>::printLvls() const noexcept
+{
+	SLNode* cur;
+	for (int i = 0; i < lvl; i++) {
+		cur = first->lvlSLNodes[i];
+		std::cout << "\n" << i << "):";
+		while (cur) {
+			std::cout << "->" << cur->value;
+			cur = cur->lvlSLNodes[i];
+		}
+	}
 }
 
 template <class T>
@@ -457,21 +442,20 @@ size_t SkipList<T>::getBytesUsed() const noexcept
 		nodesBytes += cur->getBytesUsed();
 		cur = cur->lvlSLNodes[0];
 	}
-	return sizeof(SkipList<T>) + nodesBytes;//+ sizeof(SLNode::HEAD_VAL);
+	return sizeof(SkipList<T>) + nodesBytes;
 }
 
 //iter
 template <class T>
 SListIterator<T> SListIterator<T>::operator++()
 {
-
 	if (current) current = current->lvlSLNodes[0];
 	return *this;
 }
 
 template <class T>
-SListIterator<T>::SListIterator(typename SkipList<T>::SLNode* firstSLNode) noexcept
-	:current(firstSLNode) {}
+SListIterator<T>::SListIterator(typename SkipList<T>::SLNode* headerSLNode) noexcept
+	:current(headerSLNode) {}
 
 template <class T>
 const typename SkipList<T>::SLNode* SListIterator<T>::operator*() const

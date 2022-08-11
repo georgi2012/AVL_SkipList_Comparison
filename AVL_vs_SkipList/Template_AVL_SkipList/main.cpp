@@ -1,11 +1,13 @@
 #include "T_AVLTree.h"
 #include "T_SkipList.h"
 #include <chrono>
-#include <unordered_set>
+//#include <unordered_set>
 #include <stdlib.h>     /* srand, rand */
 #include <time.h> 
 #include <cmath>
 #include <string>
+#include <algorithm> 
+#include <random>
 
 using std::chrono::steady_clock;
 using std::chrono::duration_cast;
@@ -23,198 +25,260 @@ int getOptimalLvlNum(int expectedSize, double p = 0.5) {
 #define SLIST_IND 0
 #define AVL_IND 1
 
-struct TestHelper {
-	double insertion[2] = { 0 }, deletion[2] = { 0 }, search[2] = { 0 }, memory[2] = { 0 };
+struct TestHelperContainer {
+	struct TestHelper {
+		double insertion[2] = { 0 }, deletion[2] = { 0 }, search[2] = { 0 }, memory[2] = { 0 };
+	} avg, slowest;
 };
 
-
-TestHelper findAvgInsertDelFindNotRand(const unsigned elemCnt, const int testsCnt = 30) {
-	double avgFind = 0;
-	double avgDel = 0;
-	double avgInsert = 0;
-	TestHelper data;
+#pragma optimize( "", off )
+TestHelperContainer findAvgInsertDelFind(const unsigned elemCnt, const int testsCnt = 30) {
+	TestHelperContainer data;
 	//std::unordered_set<int> set;
-	std::vector<int> set;
+	int* arr = new int[elemCnt];
+	//
+	for (int i = 0; i < elemCnt; i++) {
+		arr[i] = i;
+	}
+	//
 	int value;
 	const int intMax = ~(1 << (sizeof(int) * 8 - 1));
 	SkipList<int> list(getOptimalLvlNum(elemCnt), 0.5);
 	AVLTree<int> tree;
-	if (elemCnt > 20000) {
-		std::cout << "(Due to the many elements choice, random number generation might be really slow.)\n";
-	}
-	for (int i = 0; i < testsCnt; i++) {
-		set.resize(elemCnt);
-		//make elements
-		for (int i = 0; i < elemCnt; i++) {
-			set[i] = i;
-		}
-		//std::cout << "made";
+
+	//
+	for (int j = 0; j < testsCnt; j++) {
+		//std::cout << j;
+		unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+		std::shuffle(arr, arr + elemCnt, std::default_random_engine(seed));
 		//insert
 		auto start = steady_clock::now();
-		for (auto entry : set) {
-			if (!list.insert(entry))
-				throw std::runtime_error("Problem inserting in List ");
-		}
 		auto end = steady_clock::now();
-		data.insertion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
-		data.memory[SLIST_IND] += list.getBytesUsed();
+		for (int i = 0; i < elemCnt; i++) {
+			start = steady_clock::now();
+			list.insert(arr[i]);
+			end = steady_clock::now();
+			data.avg.insertion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+			if (duration_cast<nanoseconds>(end - start).count() >
+				data.slowest.insertion[SLIST_IND])
+				data.slowest.insertion[SLIST_IND] = duration_cast<nanoseconds>(end - start).count();
+		}
+
+		//data.insertion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+		data.avg.memory[SLIST_IND] += list.getBytesUsed();
+		if (list.getBytesUsed() > data.slowest.memory[SLIST_IND]) {
+			data.slowest.memory[SLIST_IND] = list.getBytesUsed();
+		}
 		//AVL insert
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!tree.insert(entry))
-				throw std::runtime_error("Problem inserting in tree ");
+
+
+		for (int i = 0; i < elemCnt; i++) {
+			start = steady_clock::now();
+			tree.insert(arr[i]);
+			end = steady_clock::now();
+			data.avg.insertion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+			if (duration_cast<nanoseconds>(end - start).count() >
+				data.slowest.insertion[AVL_IND])
+				data.slowest.insertion[AVL_IND] = duration_cast<nanoseconds>(end - start).count();
 		}
-		end = steady_clock::now();
-		data.insertion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
-		data.memory[AVL_IND] += tree.getBytesUsed();
+		//
+
+		data.avg.memory[AVL_IND] += tree.getBytesUsed();
+		if (tree.getBytesUsed() > data.slowest.memory[AVL_IND]) {
+			data.slowest.memory[AVL_IND] = tree.getBytesUsed();
+		}
 		//List find
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!list.exists(entry))
-				throw std::runtime_error("Problem searching in List ");
-		}
-		end = steady_clock::now();
-		data.search[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+		for (int i = 0; i < elemCnt; i++) {
+			start = steady_clock::now();
+			list.exists(arr[i]);
 
+			end = steady_clock::now();
+			data.avg.search[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+			if (duration_cast<nanoseconds>(end - start).count() >
+				data.slowest.search[SLIST_IND])
+				data.slowest.search[SLIST_IND] = duration_cast<nanoseconds>(end - start).count();
+		}
+		//std::cout << "Height :" <<tree.getHeight() << std::endl;
 		//tree find
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!tree.exists(entry))
-				throw std::runtime_error("Problem searching in tree ");
-		}
-		end = steady_clock::now();
-		data.search[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+		for (int i = 0; i < elemCnt; i++) {
+			start = steady_clock::now();
 
+			tree.exists(arr[i]);
+
+			end = steady_clock::now();
+			data.avg.search[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+			if (duration_cast<nanoseconds>(end - start).count() >
+				data.slowest.search[AVL_IND])
+				data.slowest.search[AVL_IND] = duration_cast<nanoseconds>(end - start).count();
+		}
 		//List delete
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!list.remove(entry))
-				throw std::runtime_error("Problem deleting in List ");
-		}
-		end = steady_clock::now();
-		data.deletion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+		for (int i = 0; i < elemCnt; i++) {
+			start = steady_clock::now();
+			list.remove(arr[i]);
 
-		//tree delete
-		int cnt = -1;
-		start = steady_clock::now();
-		for (auto entry : set) {
-			++cnt;
-			if (!tree.remove(entry))
-				//std::cout << "Problem in tree del - " << cnt <<"_"<<i<< std::endl;
-				throw std::runtime_error("Problem deleting in tree ");
+			end = steady_clock::now();
+			data.avg.deletion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+			if (duration_cast<nanoseconds>(end - start).count() >
+				data.slowest.deletion[SLIST_IND])
+				data.slowest.deletion[SLIST_IND] = duration_cast<nanoseconds>(end - start).count();
 		}
-		end = steady_clock::now();
-		data.deletion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+		//tree delete
+
+		for (int i = 0; i < elemCnt; i++) {
+			start = steady_clock::now();
+
+			tree.remove(arr[i]);
+
+			end = steady_clock::now();
+			data.avg.deletion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+			if (duration_cast<nanoseconds>(end - start).count() >
+				data.slowest.deletion[AVL_IND])
+				data.slowest.deletion[AVL_IND] = duration_cast<nanoseconds>(end - start).count();
+		}
 		//clear data
 		tree.clearData();
 		list.clearData();
-		set.clear();
+		//set.clear();
+	}
+	delete[] arr;
+	for (int i = 0; i < 2; i++) {
+		data.avg.insertion[i] /= (testsCnt * elemCnt);
+		data.avg.deletion[i] /= (testsCnt * elemCnt);
+		data.avg.search[i] /= (testsCnt * elemCnt);
+		data.avg.memory[i] /= (testsCnt);// *elemCnt);
 	}
 
-	for (int i = 0; i < 2; i++) {
-		data.insertion[i] /= (testsCnt * elemCnt);
-		data.deletion[i] /= (testsCnt * elemCnt);
-		data.search[i] /= (testsCnt * elemCnt);
-		data.memory[i] /= (testsCnt);
-	}
 	return data;
 }
 
-
-TestHelper findAvgInsertDelFind(const unsigned elemCnt, const int testsCnt = 30) {
-	double avgFind = 0;
-	double avgDel = 0;
-	double avgInsert = 0;
-	TestHelper data;
-	std::unordered_set<int> set;
+#pragma optimize( "", off )
+TestHelperContainer findAvgWhenWorkingWithManyElements(const unsigned elemCnt, const int testsCnt = 30)
+{
+	TestHelperContainer data;
+	
+	int* arr = new int[elemCnt];
+	//
+	for (int i = 0; i < elemCnt; i++) {
+		arr[i] = i;
+	}
+	//
 	int value;
-	const int intMax = ~(1 << (sizeof(int) * 8 - 1));
+
 	SkipList<int> list(getOptimalLvlNum(elemCnt), 0.5);
 	AVLTree<int> tree;
-	if (elemCnt > 20000) {
-		std::cout << "(Due to the many elements choice, random number generation might be really slow.)\n";
-	}
-	for (int i = 0; i < testsCnt; i++) {
-		//make elements
-		for (int i = 0; i < elemCnt; i++) {
-			do {
-				value = rand() % intMax;// -intMax / 2;
-			} while (set.find(value) != set.end());//create unique elements
-			set.insert(value);
-		}
-		//std::cout << "made";
+	size_t cnt = 0;
+	//
+	for (int j = 0; j < testsCnt; j++) {
+		unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+		std::shuffle(arr, arr + elemCnt, std::default_random_engine(seed));
 		//insert
 		auto start = steady_clock::now();
-		for (auto entry : set) {
-			if (!list.insert(entry))
-				throw std::runtime_error("Problem inserting in List ");
-		}
 		auto end = steady_clock::now();
-		data.insertion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
-		data.memory[SLIST_IND] += list.getBytesUsed();
-		//AVL insert
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!tree.insert(entry))
-				throw std::runtime_error("Problem inserting in tree ");
+		for (int i = 0; i < elemCnt; i++) {
+			list.insert(arr[i]);
 		}
-		end = steady_clock::now();
-		data.insertion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
-		data.memory[AVL_IND] += tree.getBytesUsed();
+
+		for (int i = 0; i < elemCnt; i++) {
+			tree.insert(arr[i]);
+		}
+
+		//now we use operation while we stay with many elements in the structures
+		for (int i2 = 0; i2 < 15; i2++) {
+
+			int cntOfEl = (2 + rand() % 10) * (elemCnt / 100);
+			cnt += cntOfEl;
+			//now remove them
+			for (int i = 0; i < cntOfEl; i++) {
+				start = steady_clock::now();
+				list.remove(arr[i]);
+				end = steady_clock::now();
+				data.avg.deletion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+				if (duration_cast<nanoseconds>(end - start).count() >
+					data.slowest.deletion[SLIST_IND])
+					data.slowest.deletion[SLIST_IND] = duration_cast<nanoseconds>(end - start).count();
+			}
+			//avl
+			for (int i = 0; i < cntOfEl; i++) {
+				start = steady_clock::now();
+				tree.remove(arr[i]);
+				end = steady_clock::now();
+				data.avg.deletion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+				if (duration_cast<nanoseconds>(end - start).count() >
+					data.slowest.deletion[AVL_IND])
+					data.slowest.deletion[AVL_IND] = duration_cast<nanoseconds>(end - start).count();
+			}
+			//and and add again
+			for (int i = 0; i < cntOfEl; i++) {
+				start = steady_clock::now();
+				list.insert(arr[i]);
+				end = steady_clock::now();
+				data.avg.insertion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+				if (duration_cast<nanoseconds>(end - start).count() >
+					data.slowest.insertion[SLIST_IND])
+					data.slowest.insertion[SLIST_IND] = duration_cast<nanoseconds>(end - start).count();
+			}
+
+			//AVL insert
+			for (int i = 0; i < cntOfEl; i++) {
+				start = steady_clock::now();
+				tree.insert(arr[i]);
+				end = steady_clock::now();
+				data.avg.insertion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+				if (duration_cast<nanoseconds>(end - start).count() >
+					data.slowest.insertion[AVL_IND])
+					data.slowest.insertion[AVL_IND] = duration_cast<nanoseconds>(end - start).count();
+			}
+			//
+			//List find
+			for (int i = 0; i < cntOfEl; i++) {
+				start = steady_clock::now();
+				list.exists(arr[i]);
+
+				end = steady_clock::now();
+				data.avg.search[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
+				if (duration_cast<nanoseconds>(end - start).count() >
+					data.slowest.search[SLIST_IND])
+					data.slowest.search[SLIST_IND] = duration_cast<nanoseconds>(end - start).count();
+			}
+			//tree find
+			for (int i = 0; i < cntOfEl; i++) {
+				start = steady_clock::now();
+
+				tree.exists(arr[i]);
+
+				end = steady_clock::now();
+				data.avg.search[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
+				if (duration_cast<nanoseconds>(end - start).count() >
+					data.slowest.search[AVL_IND])
+					data.slowest.search[AVL_IND] = duration_cast<nanoseconds>(end - start).count();
+			}
+			data.avg.memory[AVL_IND] += tree.getBytesUsed();
+			if (tree.getBytesUsed() > data.slowest.memory[AVL_IND]) {
+				data.slowest.memory[AVL_IND] = tree.getBytesUsed();
+			}
+			data.avg.memory[SLIST_IND] += list.getBytesUsed();
+			if (list.getBytesUsed() > data.slowest.memory[SLIST_IND]) {
+				data.slowest.memory[SLIST_IND] = list.getBytesUsed();
+			}
+		}
+
 		//List find
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!list.exists(entry))
-				throw std::runtime_error("Problem searching in List ");
-		}
-		end = steady_clock::now();
-		data.search[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
-
-		//tree find
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!tree.exists(entry))
-				throw std::runtime_error("Problem searching in tree ");
-		}
-		end = steady_clock::now();
-		data.search[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
-
-		//List delete
-		start = steady_clock::now();
-		for (auto entry : set) {
-			if (!list.remove(entry))
-				throw std::runtime_error("Problem deleting in List ");
-		}
-		end = steady_clock::now();
-		data.deletion[SLIST_IND] += duration_cast<nanoseconds>(end - start).count();
-
-		//tree delete
-		int cnt = -1;
-		start = steady_clock::now();
-		for (auto entry : set) {
-			++cnt;
-			if (!tree.remove(entry))
-				//std::cout << "Problem in tree del - " << cnt <<"_"<<i<< std::endl;
-				throw std::runtime_error("Problem deleting in tree ");
-		}
-		end = steady_clock::now();
-		data.deletion[AVL_IND] += duration_cast<nanoseconds>(end - start).count();
-		//clear data
 		tree.clearData();
 		list.clearData();
-		set.clear();
+		//set.clear();
+	}
+	delete[] arr;
+	for (int i = 0; i < 2; i++) {
+		data.avg.insertion[i] /= cnt;//(testsCnt * cnt);
+		data.avg.deletion[i] /= cnt;
+		data.avg.search[i] /= cnt;
+		data.avg.memory[i] /= (testsCnt);// *elemCnt);
 	}
 
-	for (int i = 0; i < 2; i++) {
-		data.insertion[i] /= (testsCnt * elemCnt);
-		data.deletion[i] /= (testsCnt * elemCnt);
-		data.search[i] /= (testsCnt * elemCnt);
-		data.memory[i] /= (testsCnt);// *elemCnt);
-	}
 	return data;
 }
 
-void printPrettyTable(TestHelper& data) {
+void printPrettyTable(TestHelperContainer::TestHelper& data, const string starter = "__________") {
 	string avlData[] = { std::to_string((int)data.insertion[AVL_IND]) ,
 					   std::to_string((int)data.deletion[AVL_IND]) ,
 					   std::to_string((int)data.search[AVL_IND]),
@@ -232,7 +296,7 @@ void printPrettyTable(TestHelper& data) {
 	//row 1
 	std::cout << "-----------------------------------------------\n";
 	//string(firstColWidth, ' ')
-	std::cout << "__________" << "|     AVL    |  SkipList  |  AVL/SL  |\n";
+	std::cout << starter << "|     AVL    |  SkipList  |  AVL/SL  |\n";
 	//row 2
 	std::cout << "Insertion |" << //first col
 		std::string(otherColsWidth - avlData[0].size(), ' ') << avlData[0] << "ns|" << //second col
@@ -256,19 +320,30 @@ void printPrettyTable(TestHelper& data) {
 }
 
 
+
 int main() {
 	srand(time(NULL));
 	try {
 		const int testNum = 30;
-		const int elemCnt = 30'000;
+		const int elemCnt = 1'000;
 		std::cout << "Running " << testNum << " tests with " << elemCnt << " elements each and\n";
 		std::cout << "taking their average results per operation...\n";
-		TestHelper data = findAvgInsertDelFind(elemCnt, testNum);
-		//TestHelper data = findAvgInsertDelFindNotRand(elemCnt, testNum);
+		auto data = findAvgInsertDelFind(elemCnt, testNum);
+		
 		std::cout << "\nResult:\n\n";
-
-		printPrettyTable(data);
 		std::cout << "\nAverage time that each operation needs to complete with one element.\n";
+		printPrettyTable(data.avg);
+		std::cout << "\n\nSlowest time for one operation.\n";
+		//__________
+		printPrettyTable(data.slowest, "__Slowest_");
+		//
+		std::cout << "\n\nAvg time when used constantly with many elements.\n";
+		//__________
+		data = findAvgWhenWorkingWithManyElements(elemCnt, testNum);
+		printPrettyTable(data.avg);
+	}
+	catch (const std::bad_alloc&) {
+		std::cout << "\nError :Not enough memory to perform the tests.\n";
 	}
 	catch (const std::exception& e) {
 		std::cout << "\nError :" << e.what() << "\n";
@@ -279,88 +354,139 @@ int main() {
 
 /*
 Notes:
-- SkipList's insertion is nearly always faster
-- SkipList deletion is nearly 3 times faster as there is less balancing
-- With many elements search in SkipList might be slightly slower
-- With consequent numbers SkipList is way better than AVL
-- Memory usage is nearly always the same
-- In release mode much more optimizations can be done in the tree
-  and it can become faster
+- SkipList has advantage when removing elements when working with less elements (~100'000)
+- SkipList uses about 25% more memory
+- AVL has overall better performance for single threaded processes
+- SkipList is used more often for concurrent computing as when modifying 
+or updating a node in list, you need to touch about 3 nodes - node itself and adjacent.
+You dont need to lock and synchronized the whole structure.
+However, when using AVL you should expect to go down and up the tree and lock many nodes
+when balancing (rotating) and that makes dead lock and synchronization
+problems more likely to occur.
+ 
 
--With random numbers: (Debug mode) (30 tests)
-with 30'000
+ Note: Slowest time for operation depends on too many factors as processor business 
+ at the moment of operation execution and is often not correct .
+
+  Running 100 tests with 100 elements each and
+Average time that each operation needs to complete with one element.
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |       296ns|       341ns|       86%|
+Deletion  |       230ns|       153ns|      150%|
+Search    |        92ns|       136ns|       67%|
+Memory    |       1608b|       2204b|       72%|
+-----------------------------------------------
+
+Slowest time for one operation.
+-----------------------------------------------
+__Slowest_|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |     38600ns|     21800ns|      177%|
+Deletion  |     26100ns|     77900ns|       33%|
+Search    |     21300ns|     36700ns|       58%|
+Memory    |       1608b|       2408b|       66%|
+-----------------------------------------------
+
+  Running 50 tests with 1000 elements each
 Result:
-
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      2364ns|      1535ns|      154%|
-Deletion  |      2256ns|       792ns|      284%|
-Search    |       488ns|       545ns|       89%|
-Memory    |     480008b|     480277b|       99%|
----------------------------------------------------
-with 20'000
-
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      2302ns|      1525ns|      150%|
-Deletion  |      2196ns|       762ns|      288%|
-Search    |       465ns|       509ns|       91%|
-Memory    |     320008b|     320206b|       99%|
----------------------------------------------------
-with 10'000
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      2156ns|      1402ns|      153%|
-Deletion  |      1942ns|       683ns|      284%|
-Search    |       419ns|       429ns|       97%|
-Memory    |     160008b|     160165b|       99%|
----------------------------------------------------
-with 5'000
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      2012ns|      1396ns|      144%|
-Deletion  |      1813ns|       637ns|      284%|
-Search    |       394ns|       385ns|      102%|
-Memory    |      80008b|      79933b|      100%|
----------------------------------------------------
-with 1'000
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      1608ns|      1188ns|      135%|
-Deletion  |      1430ns|       530ns|      269%|
-Search    |       291ns|       238ns|      122%|
-Memory    |      16008b|      16052b|       99%|
----------------------------------------------------
-with 100
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      1092ns|      1105ns|       98%|
-Deletion  |       925ns|       466ns|      198%|
-Search    |       219ns|       189ns|      115%|
-Memory    |       1608b|       1673b|       96%|
----------------------------------------------------
-
-Not randomized - consequent input
-with 100'000
-		  |     AVL    |  SkipList  |  AVL/SL  |
-Insertion |      2411ns|      1148ns|      210%|
-Deletion  |      1523ns|       411ns|      370%|
-Search    |       317ns|       198ns|      160%|
-Memory    |    1600008b|    1600223b|       99%|
-
-
-Release mode:
-Result for 30'000
+Average time that each operation needs to complete with one element.
 -----------------------------------------------
 __________|     AVL    |  SkipList  |  AVL/SL  |
-Insertion |       287ns|       645ns|       44%|
-Deletion  |       266ns|       312ns|       85%|
-Search    |       138ns|       272ns|       50%|
-Memory    |     480008b|     480084b|       99%|
+Insertion |       441ns|       411ns|      107%|
+Deletion  |       325ns|       221ns|      147%|
+Search    |       135ns|       193ns|       69%|
+Memory    |      16008b|      20177b|       79%|
 -----------------------------------------------
-Release mode:
-Not randomized for 1'000'000
+Slowest time for one operation.
+-----------------------------------------------
+__Slowest_|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |   1027600ns|    129900ns|      791%|
+Deletion  |     75400ns|    141600ns|       53%|
+Search    |     28900ns|     29600ns|       97%|
+Memory    |      16008b|      20572b|       77%|
+-----------------------------------------------
+
+--------
+Running 30 tests with 100'000 elements
+Result:
+Average time that each operation needs to complete with one element.
 -----------------------------------------------
 __________|     AVL    |  SkipList  |  AVL/SL  |
-Insertion |       189ns|       408ns|       46%|
-Deletion  |       123ns|       109ns|      112%|
-Search    |        75ns|        95ns|       78%|
-Memory    |   16000008b|   16000829b|       99%|
+Insertion |       623ns|       745ns|       83%|
+Deletion  |       630ns|       519ns|      121%|
+Search    |       275ns|       576ns|       47%|
+Memory    |    1600008b|    2000408b|       79%|
+-----------------------------------------------
+Slowest time for one operation.
+-----------------------------------------------
+__Slowest_|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |    216600ns|   4367400ns|        4%|
+Deletion  |   2408200ns|   9817200ns|       24%|
+Search    |   1535300ns|   1042200ns|      147%|
+Memory    |    1600008b|    2005116b|       79%|
+-----------------------------------------------
+Avg time when used constantly with many elements.
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |       661ns|       851ns|       77%|
+Deletion  |       659ns|       598ns|      110%|
+Search    |       314ns|       597ns|       52%|
+Memory    |   24000120b|   30002560b|      -63%|
 -----------------------------------------------
 
 
+Running 30 tests with 1'000'000 elements each 
+Result:
+Average time that each operation needs to complete with one element.
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |      1005ns|      1331ns|       75%|
+Deletion  |      1039ns|      1080ns|       96%|
+Search    |       495ns|      1425ns|       34%|
+Memory    |   16000008b|   20000570b|       79%|
+-----------------------------------------------
+Slowest time for one operation.
+-----------------------------------------------
+__Slowest_|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |   5410300ns|   1736900ns|      311%|
+Deletion  |   2067600ns|    717600ns|      288%|
+Search    |    174900ns|   1553300ns|       11%|
+Memory    |   16000008b|   20015444b|       79%|
+-----------------------------------------------
+Avg time when used constantly with many elements.
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |      1134ns|      1796ns|       63%|
+Deletion  |      1132ns|      1510ns|       74%|
+Search    |       588ns|      1470ns|       40%|
+Memory    |  240000120b|  299996374b|       -5%|
+-----------------------------------------------
+
+
+Running 5 tests with 10'000'000 elements each and
+taking their average results per operation...
+Result:
+Average time that each operation needs to complete with one element.
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |      1734ns|      2391ns|       72%|
+Deletion  |      1866ns|      2065ns|       90%|
+Search    |       952ns|      2464ns|       38%|
+Memory    |  160000008b|  199978320b|       -5%|
+-----------------------------------------------
+Slowest time for one operation.
+-----------------------------------------------
+__Slowest_|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |    338400ns|   3797700ns|        8%|
+Deletion  |   4445900ns|    460400ns|      965%|
+Search    |    989000ns|   1846200ns|       53%|
+Memory    |  160000008b|  199978320b|       -5%|
+-----------------------------------------------
+Avg time when used constantly with many elements.
+-----------------------------------------------
+__________|     AVL    |  SkipList  |  AVL/SL  |
+Insertion |      1909ns|      2883ns|       66%|
+Deletion  |      1913ns|      2553ns|       74%|
+Search    |      1062ns|      2526ns|       42%|
+-----------------------------------------------
 */

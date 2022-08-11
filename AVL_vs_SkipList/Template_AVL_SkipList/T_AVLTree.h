@@ -5,20 +5,18 @@
 template <class>
 class AVLIterator;
 
-
-
 /// @brief Self-balancing AVL tree with no repetitions rule
-template <class T> 
+template <class T>
 class AVLTree {
 private:
 	/// @brief Tree node structure that keeps value and children pointers
 	struct Node {
-		/// @brief Node pointers for the children
-		Node* left, * right;
 		/// @brief Value of the node 
 		T value;
+		/// @brief Node pointers for the children
+		Node* left, * right;
 		/// @brief Height of the subtree of that node 
-		short height = 0;
+		size_t height = 0;
 		/// @brief Default constructor that sets value
 		Node(const T& value, Node* left = nullptr, Node* right = nullptr)
 			: value(value), left(left), right(right) {}
@@ -28,7 +26,6 @@ private:
 	Node* root = nullptr;
 	/// @brief Number of nodes in the tree
 	size_t size = 0;
-
 	//private methods
 
 	/// @brief Method to copy a tree
@@ -61,16 +58,11 @@ private:
 	/// @param node Starting node for the adding
 	/// @return Pointer to the last used node
 	Node* deleteNode(const T& val, Node* node) noexcept;
-	/// @brief Method to balance the tree when inserted a new node
+	/// @brief Method to balance the tree when inserting and deleting nodes
 	/// @param val Value that has been changed lastly
 	/// @param node Starting node for the balance
 	/// @return Pointer to the last rotated node
-	Node* balanceTreeInsertion(const T& val, Node* node) noexcept;
-	/// @brief Method to balance the tree when deleted a node
-	/// @param val Value that has been changed lastly
-	/// @param node Starting node for the balance
-	/// @return Pointer to the last rotated node
-	Node* balanceTreeDeletion(const T& val, Node* node) noexcept;
+	Node* balanceTree(const T& val, Node* node) noexcept;
 	/// @brief Standart Right rotation for the specific node
 	Node* rightRotate(Node* node) noexcept;
 	/// @brief Standart Left rotation for the specific node
@@ -78,7 +70,7 @@ private:
 public:
 	friend class AVLIterator<T>;
 	//constructors and operators
-    /// @brief Standart constructor creating empty tree
+	/// @brief Standart constructor creating empty tree
 	AVLTree() = default;
 	/// @brief Copy constructor. Uses MakeCopy()
 	/// @param other Tree to be copied
@@ -114,6 +106,8 @@ public:
 	AVLIterator<T> end() const noexcept;
 	/// @brief Returns the memory used by the structure in bytes
 	size_t getBytesUsed() const noexcept;
+	/// @brief Returns height of left side minus height of right
+	inline short getBalance(Node* node) const noexcept;
 };
 
 /// @brief AVL Tree iterator using left-parent-right traversal
@@ -141,6 +135,12 @@ public:
 };
 
 //impl
+
+template<class T>
+inline short AVLTree<T>::getBalance(Node* node) const noexcept
+{
+	return node ? height(node->left) - height(node->right) : 0;
+}
 
 template<class T>
 bool AVLTree<T>::exists(const T& key) const noexcept
@@ -171,37 +171,16 @@ AVLIterator<T> AVLTree<T>::end() const noexcept
 template<class T>
 typename AVLTree<T>::Node* AVLTree<T>::leftRotate(AVLTree<T>::Node* node) noexcept
 {
-	if (!node->right) return node;
+	if (!node || !node->right) return node;
 	AVLTree<T>::Node* rightNode = node->right;
 	AVLTree<T>::Node* farLeft = rightNode->left;
 	rightNode->left = node;
 	node->right = farLeft;
-	//update height
 	node->height = 1 + std::max(height(node->left), height(node->right));
 	rightNode->height = 1 + std::max(height(rightNode->left), height(rightNode->right));
 	return rightNode;
 }
 
-template<class T>
-typename AVLTree<T>::Node* AVLTree<T>::balanceTreeInsertion(const T& val, AVLTree<T>::Node* node) noexcept
-{
-	int balance = height(node->left) - height(node->right);
-	if (balance > 1 && val < node->left->value) {
-		return rightRotate(node);// Left Left Case
-	}
-	if (balance < -1 && val > node->right->value) {
-		return leftRotate(node);// Right Right Case
-	}
-	if (balance > 1 && val > node->left->value) {
-		node->left = leftRotate(node->left);// Left Right Case
-		return rightRotate(node);
-	}
-	if (balance < -1 && val < node->right->value) {
-		node->right = rightRotate(node->right);// Right Left Case
-		return leftRotate(node);
-	}
-	return node;
-}
 
 template<class T>
 size_t AVLTree<T>::getBytesUsed() const noexcept
@@ -210,23 +189,23 @@ size_t AVLTree<T>::getBytesUsed() const noexcept
 }
 
 template<class T>
-typename AVLTree<T>::Node* AVLTree<T>::balanceTreeDeletion(const T& val, AVLTree<T>::Node* node) noexcept
+typename AVLTree<T>::Node* AVLTree<T>::balanceTree(const T& val, AVLTree<T>::Node* node) noexcept
 {
-	int bLeft = height(node->left);
-	int bRight = height(node->right);
-	int balance = bLeft - bRight;
-	if (balance > 1 && val && bLeft >= 0) {
-		//node->height=
+	if (!node) return nullptr;
+	int bLeft = getBalance(node->left);
+	int bRight = getBalance(node->right);
+	int balance = getBalance(node);
+	if (balance > 1 && bLeft >= 0) {
 		return rightRotate(node);// Left Left Case
 	}
-	if (balance < -1 && val && bRight <= 0) {
+	if (balance < -1 && bRight <= 0) {
 		return leftRotate(node);// Right Right Case
 	}
-	if (balance > 1 && val && bLeft < 0) {
+	if (balance > 1 && bLeft < 0) {
 		node->left = leftRotate(node->left);// Left Right Case
 		return rightRotate(node);
 	}
-	if (balance < -1 && val && bLeft > 0) {
+	if (balance < -1 && bLeft > 0) {
 		node->right = rightRotate(node->right);// Right Left Case
 		return leftRotate(node);
 	}
@@ -236,12 +215,12 @@ typename AVLTree<T>::Node* AVLTree<T>::balanceTreeDeletion(const T& val, AVLTree
 template<class T>
 typename AVLTree<T>::Node* AVLTree<T>::rightRotate(AVLTree<T>::Node* node) noexcept
 {
-	if (!node->left) return node;
+	if (!node || !node->left) return node;
 	AVLTree<T>::Node* leftNode = node->left;
 	AVLTree<T>::Node* farRight = leftNode->right;
 	leftNode->right = node;
 	node->left = farRight;
-	//update height
+	
 	node->height = std::max(height(node->left), height(node->right));
 	leftNode->height = std::max(height(leftNode->left), height(leftNode->right));
 	return leftNode;
@@ -263,7 +242,10 @@ typename AVLTree<T>::Node* AVLTree<T>::insertNode(const T& val, AVLTree<T>::Node
 		throw std::logic_error("Node already exists");
 	}
 	node->height = 1 + std::max(height(node->left), height(node->right));
-	return balanceTreeInsertion(val, node); //!balancing part!
+
+	if (std::abs(height(node->left) - height(node->right)) > 1)
+		return balanceTree(val, node); //!balancing part!
+	else return node;
 }
 
 template<class T>
@@ -312,7 +294,11 @@ typename AVLTree<T>::Node* AVLTree<T>::deleteNode(const T& val, AVLTree<T>::Node
 		return node;
 	//height update
 	node->height = 1 + std::max(height(node->left), height(node->right));
-	return balanceTreeDeletion(val, node);
+
+	//return 
+	if (std::abs(height(node->left) - height(node->right)) > 1)
+		return balanceTree(val, node); //!balancing part!
+	else return node;
 
 }
 
@@ -375,8 +361,8 @@ typename AVLTree<T>::Node* AVLTree<T>::makeCopy(const AVLTree<T>::Node* current)
 		node->right = makeCopy(current->right);
 	}
 	catch (...) {
-		delete node;
 		deleteAll(node->left);
+		delete node;
 		size = 0;
 		throw;
 	}
@@ -396,7 +382,6 @@ AVLTree<T>::AVLTree<T>(AVLTree<T>&& other) noexcept
 {
 	std::swap(other.size, this->size);
 	std::swap(other.root, this->root);
-
 }
 
 template<class T>
@@ -455,9 +440,10 @@ bool AVLTree<T>::insert(const T& key) noexcept
 		root = insertNode(key, root);
 		++size;
 	}
-	catch (...) {
+	catch (const std::logic_error&) { //repetition
 		return false;
 	}
+	//memory allocation errors wont change the state of the tree 
 	return true;
 }
 

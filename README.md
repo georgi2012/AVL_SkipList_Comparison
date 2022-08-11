@@ -8,9 +8,9 @@
 - Documented headers with implementation of non-template versions for integers
 - Catch2 tests for both structures
 - Console application to run customly-made benchmark tests and print the results in a tables that gives imformation for:
- - average insertion, deletion, searching speed, memory used in bytes and comparison as percentage 
- - the slowest insertion, deletion and searching speed time while tests were running
- - average insertion, deletion, searching speed, memory  when structures are used with many elements (simulates cases that are closed to real usage)
+- - average insertion, deletion, searching speed, memory used in bytes and comparison as percentage 
+- - the slowest insertion, deletion and searching speed time while tests were running
+- - average insertion, deletion, searching speed, memory  when structures are used with many elements (simulates cases that are closed to real usage)
 
 
 ### Updates that have been made for performance enhancement in the structures:
